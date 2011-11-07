@@ -1,0 +1,1216 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE glade-interface SYSTEM "glade-2.0.dtd">
+<!--Generated with glade3 3.4.5 on Thu Jul 16 23:22:22 2009 -->
+<glade-interface>
+  <widget class="GtkWindow" id="main_window">
+    <property name="border_width">3</property>
+    <property name="window_position">GTK_WIN_POS_CENTER</property>
+    <property name="default_width">736</property>
+    <property name="default_height">536</property>
+    <signal name="configure_event" handler="on_main_window_configure_event"/>
+    <signal name="key_press_event" handler="on_main_window_key_press_event"/>
+    <signal name="destroy" handler="on_main_window_destroy"/>
+    <child>
+      <widget class="GtkNotebook" id="main_notebook">
+        <property name="visible">True</property>
+        <property name="can_focus">True</property>
+        <property name="border_width">11</property>
+        <property name="show_tabs">False</property>
+        <property name="show_border">False</property>
+        <property name="tab_border">0</property>
+        <property name="tab_hborder">0</property>
+        <property name="tab_vborder">0</property>
+        <property name="homogeneous">True</property>
+        <child>
+          <widget class="GtkFrame" id="error">
+            <property name="visible">True</property>
+            <property name="border_width">7</property>
+            <property name="label_xalign">0</property>
+            <property name="shadow_type">GTK_SHADOW_NONE</property>
+            <child>
+              <widget class="GtkVBox" id="error_vbox">
+                <property name="visible">True</property>
+                <property name="spacing">3</property>
+                <child>
+                  <widget class="GtkImage" id="error_logo">
+                    <property name="visible">True</property>
+                    <property name="extension_events">GDK_EXTENSION_EVENTS_CURSOR</property>
+                    <property name="stock">gtk-missing-image</property>
+                    <signal name="size_allocate" handler="on_error_logo_size_allocate"/>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkLabel" id="error_label">
+                    <property name="visible">True</property>
+                    <property name="label" translatable="yes">&lt;span size="large" foreground="#003300"&gt;&lt;b&gt;Error!!!&lt;/b&gt;&lt;/span&gt; </property>
+                    <property name="use_markup">True</property>
+                    <property name="justify">GTK_JUSTIFY_CENTER</property>
+                    <property name="wrap">True</property>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkScrolledWindow" id="error_text_scrolled_window">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="border_width">7</property>
+                    <property name="hscrollbar_policy">GTK_POLICY_NEVER</property>
+                    <property name="vscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
+                    <property name="shadow_type">GTK_SHADOW_IN</property>
+                    <child>
+                      <widget class="GtkTextView" id="error_text">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="border_width">7</property>
+                        <property name="editable">False</property>
+                        <property name="wrap_mode">GTK_WRAP_WORD</property>
+                        <property name="cursor_visible">False</property>
+                        <property name="text" translatable="yes">Error!
+
+An unexpected error occurred.  Please send a bug report to dmc.zli@filteredperception.org.
+
+Sorry.</property>
+                      </widget>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="padding">7</property>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkHButtonBox" id="error_hbuttonbox">
+                    <property name="visible">True</property>
+                    <property name="border_width">7</property>
+                    <child>
+                      <widget class="GtkButton" id="error_button_exit">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">abort installation and exit</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_error_button_exit_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="pack_type">GTK_PACK_END</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </widget>
+            </child>
+            <child>
+              <placeholder/>
+              <packing>
+                <property name="type">label_item</property>
+              </packing>
+            </child>
+          </widget>
+        </child>
+        <child>
+          <placeholder/>
+          <packing>
+            <property name="type">tab</property>
+          </packing>
+        </child>
+        <child>
+          <widget class="GtkFrame" id="intro">
+            <property name="visible">True</property>
+            <property name="border_width">7</property>
+            <property name="label_xalign">0</property>
+            <property name="shadow_type">GTK_SHADOW_NONE</property>
+            <child>
+              <widget class="GtkVBox" id="intro_vbox">
+                <property name="visible">True</property>
+                <property name="spacing">3</property>
+                <child>
+                  <widget class="GtkImage" id="intro_logo">
+                    <property name="visible">True</property>
+                    <property name="events">GDK_EXPOSURE_MASK | GDK_STRUCTURE_MASK</property>
+                    <property name="extension_events">GDK_EXTENSION_EVENTS_CURSOR</property>
+                    <property name="stock">gtk-missing-image</property>
+                    <signal name="expose_event" handler=" "/>
+                    <signal name="size_allocate" handler="on_intro_logo_size_allocate"/>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkLabel" id="intro_label">
+                    <property name="visible">True</property>
+                    <property name="label" translatable="yes">
+&lt;span size="x-large" foreground="#003300"&gt;&lt;b&gt;Welcome to the ZyX &lt;u&gt;Rebootless&lt;/u&gt; LiveOS Installer!&lt;/b&gt;&lt;/span&gt; </property>
+                    <property name="use_markup">True</property>
+                    <property name="justify">GTK_JUSTIFY_CENTER</property>
+                    <property name="wrap">True</property>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkScrolledWindow" id="intro_text_scrolled_window">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="border_width">7</property>
+                    <property name="hscrollbar_policy">GTK_POLICY_NEVER</property>
+                    <property name="vscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
+                    <property name="shadow_type">GTK_SHADOW_IN</property>
+                    <child>
+                      <widget class="GtkTextView" id="intro_text">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="border_width">7</property>
+                        <property name="editable">False</property>
+                        <property name="wrap_mode">GTK_WRAP_WORD</property>
+                        <property name="cursor_visible">False</property>
+                        <property name="text" translatable="yes">   WARNING: This is *beta* quality software, use only at your own risk, preferably with sufficiently recent and complete backups of all data.
+
+   Welcome to the ZyX Graphical Rebootless LiveOS Installer.  This installer will allow you to install the 'Live' operating system that you are currently using onto a system storage volume.  However, unlike traditional *nix installers, you will not need to reboot after installation.
+
+   This is accomplished by copying the running 'live' root filesystem block for block, while in use, to the destination volume.  This is done using a devicemapper 'mirror' device.  Once the mirroring completes, the resources for the original LiveOS root filesystem are released, leaving a normally[1] installed system.  Thus you could for instance, eject the LiveCD (or remove LiveUSB), then insert a blank media, and immediately burn a replicated copy of the LiveOS to give to someone, while someone else is already using the freed LiveOS media to install another system. 
+
+   Please note that this installer is still in relatively early development.  Not yet all of the LiveOS configuration changes made by /etc/rc.d/init.d/livesys and the LiveOS initramfs are reverted during the install.  This will be remedied in a subsequent release.  If there is something that specifically annoys you, please notify the author via email to: bugs AT viros DOT org. 
+
+   [1] The only minor difference between the final installed system, and a traditionally installed system, is that until the first reboot, the mounted root filesystem will be accessed through a nearly no-op simple devicemapper linear layer.  In other words, until the next boot, a performance hit no worse than any other rootfs-on-lvm installation.</property>
+                      </widget>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="padding">7</property>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkHButtonBox" id="intro_hbuttonbox">
+                    <property name="visible">True</property>
+                    <property name="border_width">7</property>
+                    <child>
+                      <widget class="GtkButton" id="intro_button_exit">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">exit, do not install</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_intro_button_exit_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="intro_button_partitioner">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">launch partitioner</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_intro_button_partitioner_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="intro_button_next">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">next - choose root volume</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_intro_button_next_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="pack_type">GTK_PACK_END</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </widget>
+            </child>
+            <child>
+              <placeholder/>
+              <packing>
+                <property name="type">label_item</property>
+              </packing>
+            </child>
+          </widget>
+          <packing>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
+          <packing>
+            <property name="type">tab</property>
+          </packing>
+        </child>
+        <child>
+          <widget class="GtkFrame" id="partitioner">
+            <property name="visible">True</property>
+            <property name="border_width">7</property>
+            <property name="label_xalign">0</property>
+            <property name="shadow_type">GTK_SHADOW_NONE</property>
+            <child>
+              <widget class="GtkVBox" id="partitioner_vbox">
+                <property name="visible">True</property>
+                <property name="spacing">3</property>
+                <child>
+                  <widget class="GtkImage" id="partitioner_logo">
+                    <property name="visible">True</property>
+                    <property name="extension_events">GDK_EXTENSION_EVENTS_CURSOR</property>
+                    <property name="stock">gtk-missing-image</property>
+                    <signal name="size_allocate" handler="on_partitioner_logo_size_allocate"/>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkLabel" id="partitioner_label">
+                    <property name="visible">True</property>
+                    <property name="label" translatable="yes">
+&lt;span size="x-large" foreground="#003300"&gt;&lt;b&gt;Partitioner is Running&lt;/b&gt;&lt;/span&gt; </property>
+                    <property name="use_markup">True</property>
+                    <property name="justify">GTK_JUSTIFY_CENTER</property>
+                    <property name="wrap">True</property>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkScrolledWindow" id="partitioner_text_scrolled_window">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="border_width">7</property>
+                    <property name="hscrollbar_policy">GTK_POLICY_NEVER</property>
+                    <property name="vscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
+                    <property name="shadow_type">GTK_SHADOW_IN</property>
+                    <child>
+                      <widget class="GtkTextView" id="partitioner_text">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="border_width">7</property>
+                        <property name="editable">False</property>
+                        <property name="wrap_mode">GTK_WRAP_WORD</property>
+                        <property name="cursor_visible">False</property>
+                        <property name="text" translatable="yes">The external partitioner has been launched.  Finish using it to arrange desired destination partitions, then exit it in order to proceed here.
+</property>
+                      </widget>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="padding">7</property>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkHButtonBox" id="partitioner_hbuttonbox">
+                    <property name="visible">True</property>
+                    <property name="border_width">7</property>
+                    <child>
+                      <widget class="GtkButton" id="partitioner_button_exit">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">exit, do not install</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_partitioner_button_exit_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="partitioner_button_abort">
+                        <property name="visible">False</property>
+                        <property name="sensitive">False</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">abort partitioner</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_partitioner_button_abort_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="partitioner_button_next">
+                        <property name="visible">True</property>
+                        <property name="sensitive">False</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">next</property>
+                        <property name="response_id">0</property>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="pack_type">GTK_PACK_END</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </widget>
+            </child>
+            <child>
+              <placeholder/>
+              <packing>
+                <property name="type">label_item</property>
+              </packing>
+            </child>
+          </widget>
+          <packing>
+            <property name="position">5</property>
+          </packing>
+        </child>
+        <child>
+          <widget class="GtkFrame" id="rps">
+            <property name="visible">True</property>
+            <property name="extension_events">GDK_EXTENSION_EVENTS_CURSOR</property>
+            <property name="border_width">7</property>
+            <property name="label_xalign">0</property>
+            <property name="shadow_type">GTK_SHADOW_NONE</property>
+            <child>
+              <widget class="GtkVBox" id="rps_vbox">
+                <property name="visible">True</property>
+                <property name="spacing">3</property>
+                <child>
+                  <widget class="GtkImage" id="rps_logo">
+                    <property name="visible">True</property>
+                    <property name="extension_events">GDK_EXTENSION_EVENTS_CURSOR</property>
+                    <property name="stock">gtk-missing-image</property>
+                    <signal name="size_allocate" handler="on_rps_logo_size_allocate"/>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkLabel" id="rps_label">
+                    <property name="visible">True</property>
+                    <property name="label" translatable="yes">
+&lt;span size="x-large" foreground="#003300"&gt;&lt;b&gt;Select root(/) storage volume for installation&lt;/b&gt;&lt;/span&gt; </property>
+                    <property name="use_markup">True</property>
+                    <property name="justify">GTK_JUSTIFY_CENTER</property>
+                    <property name="wrap">True</property>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkScrolledWindow" id="rps_choices_treeview_scrolled_window">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="border_width">7</property>
+                    <property name="hscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
+                    <property name="shadow_type">GTK_SHADOW_IN</property>
+                    <child>
+                      <widget class="GtkTreeView" id="rps_choices_treeview">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="events">GDK_BUTTON_RELEASE_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="border_width">7</property>
+                        <signal name="select_cursor_row" handler=" "/>
+                        <signal name="cursor_changed" handler=" "/>
+                        <signal name="set_scroll_adjustments" handler=" "/>
+                      </widget>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="padding">7</property>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkHButtonBox" id="rps_hbuttonbox">
+                    <property name="visible">True</property>
+                    <property name="border_width">7</property>
+                    <child>
+                      <widget class="GtkButton" id="rps_button_exit">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">exit, do not install</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_rps_button_exit_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="rps_button_back">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">back</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_rps_button_back_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="rps_button_next">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">next - choose boot volume</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_rps_button_next_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="pack_type">GTK_PACK_END</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </widget>
+            </child>
+            <child>
+              <placeholder/>
+              <packing>
+                <property name="type">label_item</property>
+              </packing>
+            </child>
+          </widget>
+          <packing>
+            <property name="position">1</property>
+            <property name="tab_pack">GTK_PACK_END</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
+          <packing>
+            <property name="type">tab</property>
+          </packing>
+        </child>
+        <child>
+          <widget class="GtkFrame" id="bps">
+            <property name="visible">True</property>
+            <property name="extension_events">GDK_EXTENSION_EVENTS_CURSOR</property>
+            <property name="border_width">7</property>
+            <property name="label_xalign">0</property>
+            <property name="shadow_type">GTK_SHADOW_NONE</property>
+            <child>
+              <widget class="GtkVBox" id="bps_vbox">
+                <property name="visible">True</property>
+                <property name="spacing">3</property>
+                <child>
+                  <widget class="GtkImage" id="bps_logo">
+                    <property name="visible">True</property>
+                    <property name="extension_events">GDK_EXTENSION_EVENTS_CURSOR</property>
+                    <property name="stock">gtk-missing-image</property>
+                    <signal name="size_allocate" handler="on_bps_logo_size_allocate"/>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkLabel" id="bps_label">
+                    <property name="visible">True</property>
+                    <property name="label" translatable="yes">
+&lt;span size="x-large" foreground="#003300"&gt;&lt;b&gt;Select boot(/boot) storage volume for installation&lt;/b&gt;&lt;/span&gt; </property>
+                    <property name="use_markup">True</property>
+                    <property name="justify">GTK_JUSTIFY_CENTER</property>
+                    <property name="wrap">True</property>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkScrolledWindow" id="bps_choices_treeview_scrolled_window">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="border_width">7</property>
+                    <property name="hscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
+                    <property name="shadow_type">GTK_SHADOW_IN</property>
+                    <child>
+                      <widget class="GtkTreeView" id="bps_choices_treeview">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="events">GDK_BUTTON_RELEASE_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="border_width">7</property>
+                      </widget>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="padding">7</property>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkHButtonBox" id="bps_hbuttonbox">
+                    <property name="visible">True</property>
+                    <property name="border_width">7</property>
+                    <child>
+                      <widget class="GtkButton" id="bps_button_exit">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">exit, do not install</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_bps_button_exit_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="bps_button_back">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">back</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_bps_button_back_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="bps_button_next">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">next - choose swap volume</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_bps_button_next_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="pack_type">GTK_PACK_END</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </widget>
+            </child>
+            <child>
+              <placeholder/>
+              <packing>
+                <property name="type">label_item</property>
+              </packing>
+            </child>
+          </widget>
+          <packing>
+            <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
+          <packing>
+            <property name="type">tab</property>
+          </packing>
+        </child>
+        <child>
+          <widget class="GtkFrame" id="sps">
+            <property name="visible">True</property>
+            <property name="extension_events">GDK_EXTENSION_EVENTS_CURSOR</property>
+            <property name="border_width">7</property>
+            <property name="label_xalign">0</property>
+            <property name="shadow_type">GTK_SHADOW_NONE</property>
+            <child>
+              <widget class="GtkVBox" id="sps_vbox">
+                <property name="visible">True</property>
+                <property name="spacing">3</property>
+                <child>
+                  <widget class="GtkImage" id="sps_logo">
+                    <property name="visible">True</property>
+                    <property name="extension_events">GDK_EXTENSION_EVENTS_CURSOR</property>
+                    <property name="stock">gtk-missing-image</property>
+                    <signal name="size_allocate" handler="on_sps_logo_size_allocate"/>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkLabel" id="sps_label">
+                    <property name="visible">True</property>
+                    <property name="label" translatable="yes">
+&lt;span size="x-large" foreground="#003300"&gt;&lt;b&gt;Select swap storage volume for installation&lt;/b&gt;&lt;/span&gt; </property>
+                    <property name="use_markup">True</property>
+                    <property name="justify">GTK_JUSTIFY_CENTER</property>
+                    <property name="wrap">True</property>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkScrolledWindow" id="sps_choices_treeview_scrolled_window">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="border_width">7</property>
+                    <property name="hscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
+                    <property name="shadow_type">GTK_SHADOW_IN</property>
+                    <child>
+                      <widget class="GtkTreeView" id="sps_choices_treeview">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="events">GDK_BUTTON_RELEASE_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="border_width">7</property>
+                      </widget>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="padding">7</property>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkHButtonBox" id="sps_hbuttonbox">
+                    <property name="visible">True</property>
+                    <property name="border_width">7</property>
+                    <child>
+                      <widget class="GtkButton" id="sps_button_exit">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">exit, do not install</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_sps_button_exit_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="sps_button_back">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">back</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_sps_button_back_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="sps_button_next">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">next - review options</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_sps_button_next_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="pack_type">GTK_PACK_END</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </widget>
+            </child>
+            <child>
+              <placeholder/>
+              <packing>
+                <property name="type">label_item</property>
+              </packing>
+            </child>
+          </widget>
+          <packing>
+            <property name="position">3</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
+          <packing>
+            <property name="type">tab</property>
+          </packing>
+        </child>
+        <child>
+          <widget class="GtkFrame" id="review">
+            <property name="visible">True</property>
+            <property name="border_width">7</property>
+            <property name="label_xalign">0</property>
+            <property name="shadow_type">GTK_SHADOW_NONE</property>
+            <child>
+              <widget class="GtkVBox" id="review_vbox">
+                <property name="visible">True</property>
+                <property name="spacing">3</property>
+                <child>
+                  <widget class="GtkImage" id="review_logo">
+                    <property name="visible">True</property>
+                    <property name="extension_events">GDK_EXTENSION_EVENTS_CURSOR</property>
+                    <property name="stock">gtk-missing-image</property>
+                    <signal name="size_allocate" handler="on_review_logo_size_allocate"/>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkLabel" id="review_label">
+                    <property name="visible">True</property>
+                    <property name="label" translatable="yes">
+&lt;span size="x-large" foreground="#003300"&gt;&lt;b&gt;Final Option Review 
+&lt;u&gt;*READ WARNINGS CAREFULLY*&lt;/u&gt;&lt;/b&gt;&lt;/span&gt; </property>
+                    <property name="use_markup">True</property>
+                    <property name="justify">GTK_JUSTIFY_CENTER</property>
+                    <property name="wrap">True</property>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkScrolledWindow" id="review_text_scrolled_window">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="border_width">7</property>
+                    <property name="hscrollbar_policy">GTK_POLICY_NEVER</property>
+                    <property name="vscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
+                    <property name="shadow_type">GTK_SHADOW_IN</property>
+                    <child>
+                      <widget class="GtkTextView" id="review_text">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="border_width">7</property>
+                        <property name="editable">False</property>
+                        <property name="wrap_mode">GTK_WRAP_WORD</property>
+                        <property name="cursor_visible">False</property>
+                        <property name="text" translatable="yes">This text will be replaced with a run-time generated version.
+</property>
+                      </widget>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="padding">7</property>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkHButtonBox" id="review_hbuttonbox">
+                    <property name="visible">True</property>
+                    <property name="border_width">7</property>
+                    <child>
+                      <widget class="GtkButton" id="review_button_exit">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">exit, do not install</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_review_button_exit_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="review_button_back">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">back</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_review_button_back_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="review_button_next">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">next -  install</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_review_button_next_clicked"/>
+                        <signal name="activate" handler=" "/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="pack_type">GTK_PACK_END</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </widget>
+            </child>
+            <child>
+              <placeholder/>
+              <packing>
+                <property name="type">label_item</property>
+              </packing>
+            </child>
+          </widget>
+          <packing>
+            <property name="position">4</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
+          <packing>
+            <property name="type">tab</property>
+          </packing>
+        </child>
+        <child>
+          <widget class="GtkFrame" id="installing">
+            <property name="visible">True</property>
+            <property name="border_width">7</property>
+            <property name="label_xalign">0</property>
+            <property name="shadow_type">GTK_SHADOW_NONE</property>
+            <child>
+              <widget class="GtkVBox" id="installing_vbox">
+                <property name="visible">True</property>
+                <property name="spacing">3</property>
+                <child>
+                  <widget class="GtkImage" id="installing_logo">
+                    <property name="visible">True</property>
+                    <property name="extension_events">GDK_EXTENSION_EVENTS_CURSOR</property>
+                    <property name="stock">gtk-missing-image</property>
+                    <signal name="size_allocate" handler="on_installing_logo_size_allocate"/>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkLabel" id="installing_label">
+                    <property name="visible">True</property>
+                    <property name="label" translatable="yes">
+&lt;span size="x-large" foreground="#003300"&gt;&lt;b&gt;&lt;u&gt;Rebootless&lt;/u&gt; LiveOS Installation&lt;/b&gt;&lt;/span&gt; </property>
+                    <property name="use_markup">True</property>
+                    <property name="justify">GTK_JUSTIFY_CENTER</property>
+                    <property name="wrap">True</property>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkProgressBar" id="installing_progressbar">
+                    <property name="visible">True</property>
+                    <property name="show_text">True</property>
+                    <property name="text" translatable="yes">Installation Progress</property>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
+                    <property name="padding">7</property>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkScrolledWindow" id="installing_text_scrolled_window">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="border_width">7</property>
+                    <property name="hscrollbar_policy">GTK_POLICY_NEVER</property>
+                    <property name="vscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
+                    <property name="shadow_type">GTK_SHADOW_IN</property>
+                    <child>
+                      <widget class="GtkTextView" id="installing_text">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="editable">False</property>
+                        <property name="wrap_mode">GTK_WRAP_WORD</property>
+                        <property name="cursor_visible">False</property>
+			<property name="text" translatable="yes">&lt;todo: insert verbose release notes here, or 'remember guantanomo bay, the Gulag of the United States of America', etc...&gt;</property>
+                      </widget>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="padding">7</property>
+                    <property name="position">4</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkHButtonBox" id="installing_hbuttonbox">
+                    <property name="visible">True</property>
+                    <property name="border_width">7</property>
+                    <child>
+                      <widget class="GtkButton" id="installing_button_abort_exit">
+                        <property name="visible">False</property>
+                        <property name="sensitive">False</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">abort installation and exit</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_installing_button_abort_exit_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="installing_button_abort_back">
+                        <property name="visible">False</property>
+                        <property name="sensitive">False</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">abort installation and go back</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_installing_button_abort_back_clicked"/>
+                        <signal name="activate" handler=" "/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="pack_type">GTK_PACK_END</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </widget>
+            </child>
+            <child>
+              <placeholder/>
+              <packing>
+                <property name="type">label_item</property>
+              </packing>
+            </child>
+          </widget>
+          <packing>
+            <property name="position">6</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
+          <packing>
+            <property name="type">tab</property>
+          </packing>
+        </child>
+        <child>
+          <widget class="GtkFrame" id="success">
+            <property name="visible">True</property>
+            <property name="border_width">7</property>
+            <property name="label_xalign">0</property>
+            <property name="shadow_type">GTK_SHADOW_NONE</property>
+            <child>
+              <widget class="GtkVBox" id="success_vbox">
+                <property name="visible">True</property>
+                <property name="spacing">3</property>
+                <child>
+                  <widget class="GtkImage" id="success_logo">
+                    <property name="visible">True</property>
+                    <property name="extension_events">GDK_EXTENSION_EVENTS_CURSOR</property>
+                    <property name="stock">gtk-missing-image</property>
+                    <signal name="size_allocate" handler="on_success_logo_size_allocate"/>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkLabel" id="success_label">
+                    <property name="visible">True</property>
+                    <property name="label" translatable="yes">
+&lt;span size="x-large" foreground="#003300"&gt;&lt;b&gt;Success!!!&lt;/b&gt;&lt;/span&gt; </property>
+                    <property name="use_markup">True</property>
+                    <property name="justify">GTK_JUSTIFY_CENTER</property>
+                    <property name="wrap">True</property>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkScrolledWindow" id="success_text_scrolled_window">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="border_width">7</property>
+                    <property name="hscrollbar_policy">GTK_POLICY_NEVER</property>
+                    <property name="vscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
+                    <property name="shadow_type">GTK_SHADOW_IN</property>
+                    <child>
+                      <widget class="GtkTextView" id="success_text">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="border_width">7</property>
+                        <property name="editable">False</property>
+                        <property name="wrap_mode">GTK_WRAP_WORD</property>
+                        <property name="cursor_visible">False</property>
+                        <property name="text" translatable="yes">Installation complete.  You may now eject or remove live media (i.e. cdrom/usb).
+</property>
+                      </widget>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="padding">7</property>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
+                <child>
+                  <widget class="GtkHButtonBox" id="success_hbuttonbox">
+                    <property name="visible">True</property>
+                    <property name="border_width">7</property>
+                    <child>
+                      <widget class="GtkButton" id="success_button_viewdocs">
+                        <property name="visible">False</property>
+                        <property name="sensitive">False</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">view release documentation</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_success_button_viewdocs_clicked"/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <widget class="GtkButton" id="success_button_done">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="events">GDK_BUTTON_PRESS_MASK | GDK_STRUCTURE_MASK</property>
+                        <property name="label" translatable="yes">done</property>
+                        <property name="response_id">0</property>
+                        <signal name="clicked" handler="on_success_button_done_clicked"/>
+                        <signal name="activate" handler=" "/>
+                      </widget>
+                      <packing>
+                        <property name="padding">3</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="padding">7</property>
+                    <property name="pack_type">GTK_PACK_END</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+              </widget>
+            </child>
+            <child>
+              <placeholder/>
+              <packing>
+                <property name="type">label_item</property>
+              </packing>
+            </child>
+          </widget>
+          <packing>
+            <property name="position">7</property>
+          </packing>
+        </child>
+        <child>
+          <placeholder/>
+          <packing>
+            <property name="type">tab</property>
+          </packing>
+        </child>
+      </widget>
+    </child>
+  </widget>
+</glade-interface>

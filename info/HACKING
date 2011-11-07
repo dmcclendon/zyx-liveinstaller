@@ -1,0 +1,30 @@
+=============================================================================
+=============================================================================
+
+zyx-liveinstaller design overview:  (in devtree breakdown format)
+=================================================================
+
+In ./gui you will find the the glade-3 xml user interface description,
+as well as the implementation of the ZyXLiveInstallerGUI class.  
+
+In ./rli is the backend installer python class.  This gets installed in
+/usr/lib/python-<>/site-packages/rli/, and could be used by alternate
+programs wishing to include such rebootless installation functionality.
+
+In ./build are files with build related metadata, e.g. rpm specfile.
+
+In ./art are trademarked logo images/artwork.  Permission is granted to
+redistribute these in place if the package is unmodified.  If you modify
+zyx-liveinstaller significantly, replace these and give the package a new name.
+
+In ./info is documentation
+
+Style
+=====
+For python, trying to follow official Guido's style as I seem to agree with it 
+       without reservation. http://www.python.org/dev/peps/pep-0008/
+Otherwise, trying to comply with fedora's developer guidelines, and using
+livecd-tools, and anaconda as examples in addition to my own older projects.
+
+=============================================================================
+=============================================================================

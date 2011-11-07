@@ -1,0 +1,1999 @@
+#!/bin/bash
+#
+#############################################################################
+#
+# =======================================================
+# zyx-liveinstaller-cli - rebootless live media installer
+# =======================================================
+# version - see latest changelog entry
+#
+# licence:
+# Copyright 2007-2009 Douglas McClendon <dmc AT viros DOT org> 
+# Licensed under the GPL version 3, see end of file
+#
+# website: http://viros.org/rebootless or
+#          http://filteredperception.org/smiley/projects/zyx-liveinstaller
+#
+#############################################################################
+
+#############################################################################
+#
+# changelog:
+#
+# v0.3-2010.02.12
+#  - mkinitramfs: --preload .. --add syntax change
+#  - bugfix: make ownerships of tmpfs links the same as the original
+#  - zyx: no more /tmp(fs)
+# v0.3-2010.01.19
+#  - bugfix: ensure set 777+t on /tmp
+#  - bugfix: leave autojam out of grub.conf as well
+# v0.3-2009.11.10
+#  - bugfix: single-sole-part installs weren't getting type flag set
+# v0.3-2009.10.26
+#  - bugfix: yes, there seems to have indeed been a bug with no-swap installs
+# v0.3-2009.10.24
+#  - enhancement: centos-5.4 support
+#  - bugfix: enforce install target size minimums
+# v0.3-2009.10.13
+#  - bugfix: yes, there seems to have indeed been a bug with no-swap installs
+#  - bugfix: handle nondefault kernel cmdline args
+# v0.3-2009.10.08
+#  - debug: more error condition checks
+#  - bugfix: use tune2fs to randomize new rootfs uuid
+#  - bugfix: use blkid instead of deprecated vol_id (gone in f12)
+#  - bugfix: unmounting automounted stuff broke in 2k9.09.03
+#  - bugfix: clean eject broke in 2k9.09.21
+#  - bugfix: newer udev path_id need non /sys prefix format
+#  - use ext4 for /boot if it is used for / and not f11
+# v0.3-2009.09.21
+#  - handle f12 style lack of useful udev entries for LiveOS
+#  - handle f12 style dracut mkinitrd replacement (I hope the rename it back)
+# v0.3-2009.09.03
+#  - massive variable quoting style change as per ch5 of adv bash scr guide
+#  - fix /boot partition typeflag and bootflag not getting set
+#  - fix inexact f11 checking for seperate /boot partition requirement
+# v0.3-2009.08.15
+#  - more debug logging 
+#  - genericize automounting mitigation
+#  - rename rliveinst.zyx -> zyx-liveinstaller-cli
+#  - relabel new rootfs after install
+# v0.3-2009.07.31 
+#  - better logging to /var/log/zyx-liveinstaller.*
+# v0.3-2009.07.24
+#  - comment removed
+# v0.3-2009.07.16
+#  - zyx support again, cleanup
+# v0.3-2009.07.12
+#  - better grub config, cleanup
+# v0.3-2009.06.26
+#  - f11 rebase
+# v0.1-2007.07.14
+#  - initial release, f7 based
+#
+#############################################################################
+
+#############################################################################
+#
+# Usage
+# -----
+#
+# usage: zyx-liveinstaller-cli \
+#            <target_root_volume> \
+#            <target_boot_volume> \
+#            [<target_swap_volume>=none]
+#
+#        e.g. zyx-liveinstaller-cli /dev/sda2 /dev/sda1 /dev/sda3
+#
+# Installs liveOS onto target_partition, reboot not needed after completion.
+#
+#############################################################################
+
+#############################################################################
+# 
+# Manual
+# ------
+#
+# zyx-liveinstaller-cli is a program which when run on a supported "liveCD"
+# or similar environment, will install that operating system distribution
+# to disk.  What is unique about zyx-liveinstaller-cli, is that when
+# installation is complete, no reboot is necessary to start working in the
+# installed system.
+#
+# One such supported system, is the Fedora-11-Live-i686 "liveCD", which
+# can be downloaded from 
+#
+# http://download.fedora.redhat.com/pub/fedora/linux/releases
+#
+#
+# Method for using zyx-liveinstaller-cli with the Fedora-11-Live-i686 liveCD
+# --------------------------------------------------------------
+#
+# WARNING- THIS COMMAND WILL DESTROY THE CONTENTS OF THE INSTALLATION PARTITIONS!!!
+#
+# 1) install zyx-liveinstaller from the official fedora updates repsitory.
+#    - go to the main menu -> system -> administration -> add/remove software
+#    - search for zyx-liveinstaller, and install
+#
+# 2) run the gui from main_menu -> system tools -> Rebootless LiveOS Installation
+#
+# or run this program directly as zyx-liveinstaller-cli.  
+#
+# For instance, to install to the first partition on the first hard drive that the 
+#     OS discovered, issue this command- (and /boot on /dev/sda1 and swap on /dev/sda2)
+#
+# zyx-liveinstaller-cli /dev/sda3 /dev/sda1 /dev/sda2
+#
+# WARNING- THIS COMMAND WILL DESTROY THE CONTENTS OF THE INSTALLATION PARTITIONS!!!
+#
+#############################################################################
+
+
+#############################################################################
+## logfile init
+#############################################################################
+
+LOGFILE="/var/log/zyx-liveinstaller.log"
+ERRLOGFILE="/var/log/zyx-liveinstaller.err.log"
+exec 3>&1 > >(tee -a "${LOGFILE}")
+exec 4>&2 2> >(tee -a "${ERRLOGFILE}")
+
+
+#############################################################################
+## derived constants
+#############################################################################
+
+progname=$( basename "${0}" )
+progdir=$( dirname "${0}" )
+
+
+#############################################################################
+#############################################################################
+##
+## functions
+##
+#############################################################################
+#############################################################################
+
+# e.g. extract 'a' from '/dev/sda1'
+function get_target_disk_let {
+    echo "${1}" | sed -e 's/\(\/dev\/.d\)\(.\)\(.\)/\2/' 
+}
+
+# e.g. extract '1' from '/dev/sda1'
+function get_target_part_num {
+    echo "${1}" | sed -e 's/\(\/dev\/.d\)\(.\)\(.\)/\3/' 
+}
+
+# e.g. extract 's' from '/dev/sda1'
+function get_target_disk_type {
+    echo "${1}" | sed -e 's/\/dev\/\(.\)d\(.\)\(.\)/\1/' 
+}
+
+# in grub units: e.g. extract '0' from '/dev/sda1', or '2' from '/dev/sdc4'
+function get_grub_target_disk_num {
+    targetdisklet=$( echo "${1}" |sed -e 's/\(\/dev\/.d\)\(.\)\(.\)/\2/' )
+    if [ "${targetdisklet}" == "a" ]; then
+	grub_targetdisknum=0
+    elif [ "${targetdisklet}" == "b" ]; then
+	grub_targetdisknum=1
+    elif [ "${targetdisklet}" == "c" ]; then
+	grub_targetdisknum=2
+    elif [ "${targetdisklet}" == "d" ]; then
+	grub_targetdisknum=3
+    elif [ "${targetdisklet}" == "e" ]; then
+	grub_targetdisknum=4
+    elif [ "${targetdisklet}" == "f" ]; then
+	grub_targetdisknum=5
+    elif [ "${targetdisklet}" == "g" ]; then
+	grub_targetdisknum=6
+    elif [ "${targetdisklet}" == "h" ]; then
+	grub_targetdisknum=7
+    else
+	status "sorry, only /dev/[a-z]d[a-h]X partitions are supported"
+	exit 1
+    fi
+    echo "${grub_targetdisknum}"
+    return
+}
+
+# in grub units: e.g. extract '0' from '/dev/sda1', or '3' from '/dev/sdc4'
+function get_grub_target_part_num {
+    targetpartnum=$( get_target_part_num "${1}" )
+    # note: quoting style: $(( apparently doesn't handle quoted variables
+    echo $(( ${targetpartnum} - 1 ))
+    return
+}
+
+# get a major_minor string for a device
+function get_major_minor {
+
+    # remove leading - from possible bogus filename
+    safe_name=$( echo "${1}" | sed -e 's/^\-//' )
+
+    canonicalization=$( readlink -e "${safe_name}" )
+    if [ ! -b "${canonicalization}" ]; then
+	# not a block special device
+	echo "na,na"
+    else
+        # note: this is turning something like "... 1, 23 ..." into "1,23"
+	echo "$( ls -l ${canonicalization} | awk '{print $5 $6}' )"
+    fi
+}
+
+# try to unmount the specified device if possible
+function try_unmount {
+
+    # ignore possible none value for swap, or other non block device values
+    if [ ! -b "${1}" ]; then
+	echo none
+	return
+    fi
+
+    status "trying to unmount mounts of device:${1}"
+    target_major_minor=$( get_major_minor "${1}" )
+    
+    if [ -f /proc/self/mountinfo ]; then
+	# normal case
+	while read mountline; do
+	    mount_major_minor=$( echo "${mountline}" | awk '{print $3}' | sed -e 's/:/,/' )
+	    if [ "${target_major_minor}" == "${mount_major_minor}" ]; then
+		mount_point=$( echo "${mountline}" | awk '{print $5}' )
+                # we're just trying
+		status "trying to unmount mountpoint ${mount_point}"
+		umount "${mount_point}"
+	    fi
+	done < /proc/self/mountinfo
+    elif [ -f /proc/self/mounts ]; then
+	# legacy case (centos-5.x)
+	while read mountline; do
+	    mount_device=$( echo "${mountline}" | awk '{print $1}' )
+	    mount_major_minor=$( get_major_minor "${mount_device}" )
+	    if [ "${target_major_minor}" == "${mount_major_minor}" ]; then
+		mount_point=$( echo "${mountline}" | awk '{print $2}' )
+                # we're just trying
+		status "trying to unmount mountpoint ${mount_point}"
+		umount "${mount_point}"
+	    fi
+	done < /proc/self/mounts
+    else
+	# assertion
+	error "no /proc/self/mounts ???"
+    fi
+}
+
+# get /dev/mapper/<name> name, from an equivalent device node or link
+function get_target_map_name {
+
+    # ignore possible none value for swap
+    if [ "${1}" == "none" ]; then
+	echo none
+	return
+    fi
+
+    target_abspath=$( readlink -e "${1}" )
+
+    # sanity check, perhaps should be done elsewhere
+    if [ ! -b "${target_abspath}" ]; then
+	error "device ${1} is not a block device or a link to one"
+    fi
+
+    target_major_minor=$( get_major_minor "${target_abspath}" )
+    for device in $( ls -1A /dev/mapper ); do
+	device_major_minor=$( ls -l "/dev/mapper/${device}" | awk '{print $5 $6}' )
+	if [ "${target_major_minor}" == "${device_major_minor}" ]; then
+	    # if found, this is the /dev/mapper/ canonicalization
+	    echo "/dev/mapper/${device}"
+	    return
+	fi
+    done
+    
+    # if it wasn't found, there is no canonicalization to be done
+    echo "${1}"
+}
+
+# get uuid for device
+function get_uuid {
+    # todo: replace with -o udev and simpler parsing once that version
+    #       exists in all supported base OSs
+    /sbin/blkid -o full "${1}" | sed -e 's/^.*UUID=\"//' | sed -e 's/\".*$//'
+}
+
+# log to stdout (and logfile via fh redirect magic)
+function status {
+    echo "${progname}: $@" 
+}
+
+# raise an exception and exit
+# TODO: check return values on all external commands, raising exception
+#       via this function if so, then of course propogate that exception
+#       to the existing gui exception/error page/mode/facility.
+function error {
+    status "error: $@"
+    echo -en "\n\n"
+    exit 1
+}
+
+# text based progress 'meter'
+function progress {
+    status "installation progress - ${1} %"
+}
+
+# dump info into the output/log that may be useful to debug errors
+function dump_debug_info {
+    status "DEBUG: DUMPING CURRENT mount/dmsetup/losetup STATE"
+    cat /proc/self/mounts
+    if [ -f /proc/self/mountinfo ]; then
+	cat /proc/self/mountinfo
+    fi
+    dmsetup status
+    losetup -a
+    status "DEBUG: DONE DUMPING CURRENT mount/dmsetup/losetup STATE"
+}
+
+# get_live_loopdev <loopfile>
+#
+# returns: /dev/loopNUM that currently maps to specified loopfile
+#
+# note: there used to be truncation of long filenames for losetup, however
+#       for this usecase of fedora12+ loop devices, that should not
+#       be a problem (due to known reasonably short paths)
+#
+# note: it is extremely convenient that for fedora style LiveOS's that
+#       the in-ram overlay file is named /overlay and that it happens
+#       to be a substring of the persistence overlay file with the 
+#       name /overlayfs/overlay-SOME_ID.  Long term I'll push for the
+#       reintroduction of the udev rules for the overlay device which
+#       will allow for the removal of this note (and function).
+#
+function get_live_loopdev {
+
+    #
+    # check arg(s)
+    #
+
+    if [ $# != 1 ]; then
+	error "get_live_loopdev takes a single argument"
+    fi
+    
+    if (! echo "${1}" | grep -q "^/"); then
+	error "get_live_loopdev's target must be an absolute path starting with '/'"
+    else
+	target_looped_file="${1}"
+    fi
+
+    if (! /sbin/losetup -a | grep -q "${target_looped_file}"); then
+	error "get_live_loopdev: ${target_looped_file} IS NOT CURRENTLY LOOPED"
+    fi
+
+    result=$( /sbin/losetup -a | \
+	grep "${target_looped_file}" | \
+	sed -e 's/^\(\/.*\):\s.*$/\1/' )
+
+    echo "${result}"
+}
+
+# set type flag on a partition
+# note: using sfdisk or parted would probably be an improvement
+function set_partition_flag {
+    disk="${1}"
+    partition="${2}"
+    type="${3}"
+
+    num_parts=$( fdisk -l "${disk}" | grep "^${disk}" | wc -l )
+    if [ "${num_parts}" == "1" ]; then
+	echo -en "t\n${type}\nw\n" | fdisk "${disk}"
+    else
+	echo -en "t\n${partition}\n${type}\nw\n" | fdisk "${disk}"
+    fi
+}
+
+#############################################################################
+#############################################################################
+##
+## main
+##
+#############################################################################
+#############################################################################
+
+#############################################################################
+## inspect running liveos
+#############################################################################
+
+# get running kernel
+kernelversion=$( uname -r )
+
+# get running distrotype
+if [ -e /etc/zyx-release ]; then
+    distro_type="zyx"
+    distro_string="ZyX"
+elif [ -e /etc/fedora-release ]; then
+    distro_type="fedora"
+    distro_string="Fedora"
+elif [ -d /usr/share/doc/centos-release-5 ]; then
+    # centos is close enough to fedora
+    distro_type="fedora"
+    distro_string="CentOS"
+else
+    error "unknown distro type, not zyx or fedora"
+fi
+
+# i.e. ext3/4
+rootfs_type=$( cat /etc/fstab | awk '{print $2,$3}' | grep "^/ " | awk '{print $2}' )
+
+# check for f11(but not zyx) style seperate /boot requirement 
+# (due to grub-no-grok-ext4-yet)
+need_seperate_boot="no"
+if [ -f /etc/fedora-release ]; then
+    if [ "$( < /etc/fedora-release )" == "Fedora release 11 (Leonidas)" ]; then
+	need_seperate_boot="yes"
+    fi
+fi
+
+
+#############################################################################
+## parse commandline
+#############################################################################
+if [ $# -ne 3 ]; then
+    if [ $# -eq 2 ]; then
+	target_swap="none"
+    else
+	echo "usage: zyx-liveinstaller <target_root_volume> \\"
+	echo "usage:                   <target_boot_volume> \\"
+	echo "usage:                  [<target_swap_volume>=none]"
+	exit 1
+    fi
+else
+    target_swap="${3}"
+    if [ "${target_swap}" != "none" ]; then
+	if [ ! -e "${target_swap}" ]; then
+	    error "target swap device ${target_swap} does not exist"
+	else
+	    target_swap=$( readlink -e "${target_swap}" )
+	fi
+    fi
+fi	
+
+if [ ! -e "${1}" ]; then
+    error "target root device ${1} does not exist"
+else
+    target_root=$( readlink -e "${1}" )
+fi
+
+if [ ! -e "${2}" ]; then
+    error "target boot device ${2} does not exist"
+else
+    # /boot needs to get canonicalized 
+    target_boot=$( readlink -e "${2}" )
+    # /boot cannot be lvm (until grub2 in f13?)
+    if ( ! echo "${target_boot}" | grep -q "^/dev/.d." ); then 
+	error "/boot must be on a simple partition referencable by /dev/[a-z]d[a-h]*"
+    fi
+fi
+
+# handle case of root and boot on the same volume
+if [ "${target_root}" == "${target_boot}" ]; then
+    if [ "${need_seperate_boot}" == "yes" ]; then
+        # enforce possible f11 style restriction
+	error "this LiveOS requires seperate / and /boot filesystems"
+    fi
+    # path_to_boot is used to craft the grub config properly
+    path_to_boot="/boot"
+else
+    path_to_boot=""
+fi
+
+# canonicalize possible lvm root and swap, since external gui passes us
+# what the /dev/disk/by-id/ symlinks point to
+target_root=$( get_target_map_name "${target_root}" )
+target_swap=$( get_target_map_name "${target_swap}" )
+
+#############################################################################
+## set device name variables for detected LiveOS naming scheme
+#############################################################################
+
+if [ "${distro_type}" == "zyx" ]; then
+    ############
+    # zyx layout
+    ############
+    #
+    # /dev/zyx_root_base -> loop1 -> 
+    # -> /container_rootfs/boot/LiveOS/zyx/Guitar-ZyX-0.3.ext3.img
+    liveos_root_base_dev="zyx_root_base"
+    # /dev/zyx_root_container -> loop0 -> 
+    # -> /prime_rootfs/boot/LiveOS/zyx/Guitar-ZyX-0.3.squashfs.img
+    liveos_root_container_dev="zyx_root_container"
+    # /dev/zyx_root_overlay -> loop2 -> 
+    liveos_root_overlay_dev="zyx_root_overlay"
+    # -> /mnt/.LiveOS/overlayfs/boot/LiveOS/zyx/overlay-Guitar-ZyX-0.3
+    # /dev/zyx_root_overlay_readonly -> loop3 -> 
+    # -> /mnt/.LiveOS/overlayfs/boot/LiveOS/zyx/overlay-Guitar-ZyX-0.3
+    # /dev/zyx_root_prime -> sdb1
+    #
+    # /dev/mapper/zyx-liveos-ro -> linear(/dev/zyx_root_base)
+    liveos_root_ro_dev="zyx-liveos-ro"
+    # TODO: ro_dev_mntp could be derived from above and /proc/mounts
+    liveos_root_ro_dev_mntp="/mnt/.LiveOS/precow_rootfs"
+    # /dev/mapper/zyx-liveos-rw -> snapshot(zyx_root_base under zyx_root_overlay)
+    liveos_root_dev="zyx-liveos-rw"
+
+    # osmin not used by zyx (osimg is already minimized via tar copy)
+    liveos_root_min_overlay_dev="none"
+    liveos_root_min_container_dev="none"
+
+elif [ "${distro_type}" == "fedora" ]; then
+
+    if [ ! -b /dev/live-overlay ]; then
+        ############ 
+        # f12 layout (sans useful udev links)
+        ############
+        #
+        # loop3 -> /squashfs/LiveOS/ext[34]fs.img
+	liveos_root_base_dev="$( basename $( get_live_loopdev /squashfs/LiveOS/ext.fs.img ) )"
+        # loop1 -> /squashfs.osmin/osmin
+	liveos_root_min_overlay_dev="$( basename $( get_live_loopdev /squashfs.osmin/osmin ) )"
+        # loop4 -> /overlay
+	# note: that /overlay will be a substring in both the normal and
+	#       persistence cases.
+	liveos_root_overlay_dev="$( basename $( get_live_loopdev /overlay ) )"
+        # loop2 -> /sysroot/LiveOS/squashfs.img
+	liveos_root_container_dev="$( basename $( get_live_loopdev /sysroot/LiveOS/squashfs.img ) )"
+        # loop0 -> /osmin.img
+	liveos_root_min_container_dev="$( basename $( get_live_loopdev /osmin.img ) )"
+
+    else
+
+        ############
+        # f11 layout
+        ############
+        #
+        # /dev/live-osimg -> loop3 -> /squashfs/LiveOS/ext3fs.img
+	liveos_root_base_dev="live-osimg"
+        # /dev/live-osmin -> loop1 -> /squashfs.osmin/osmin
+	liveos_root_min_overlay_dev="live-osmin"
+        # /dev/live-overlay -> loop4 -> /overlay
+	liveos_root_overlay_dev="live-overlay"
+        # /dev/live-squashed -> loop2 -> /sysroot/LiveOS/squashfs.img
+	liveos_root_container_dev="live-squashed"
+        # /dev/live-squashed-osmin -> loop0 -> /osmin.img
+	liveos_root_min_container_dev="live-squashed-osmin"
+
+    fi
+
+    #
+    # common
+    # 
+    
+    # /dev/mapper/live-rw snapshot(live-osimg under live-overlay)
+    liveos_root_dev="live-rw"
+    liveos_root_ro_dev="none"
+    liveos_root_ro_dev_mntp="none"
+
+fi
+
+
+#############################################################################
+## setup environment dependent configuration (and sanity checks)
+#############################################################################
+
+if [ -x /sbin/dracut ]; then
+    mkinitramfs=/sbin/dracut
+    initramfs_name="initramfs"
+elif [ -x /sbin/mkinitrd ]; then
+    mkinitramfs=/sbin/mkinitrd
+    initramfs_name="initrd"
+else
+    error "no initramfs generator found, need mkinitrd or dracut"
+fi
+
+# need blkid for device uuid retrieval
+if [ ! -x /sbin/blkid ]; then
+    error "/sbin/blkid not found"
+fi
+
+# check if root and boot devices are large enough
+if [ "$( fdisk -s ${target_root} )" -lt "$( fdisk -s /dev/root )" ]; then
+    error "target root size - $( fdisk -s ${target_root} )(kb) - is less than live root size - $( fdisk -s /dev/root )(kb)"
+fi
+
+if [ "$( fdisk -s ${target_boot} )" -lt "$(( 32 * 1024 ))" ]; then
+    error "target boot size - $( fdisk -s ${target_boot} )(kb) - is less than 32MB"
+fi
+
+
+#############################################################################
+## hello user
+#############################################################################
+
+status "beginning install to targets:: root:${target_root} boot:${target_boot} swap:${target_swap}"
+progress "1.00"
+
+self_version_checksum=$( sha512sum "${progdir}/${progname}" )
+status "self version checksum : ${self_version_checksum}"
+
+status "dumping debug info: before any install action"
+dump_debug_info
+
+
+#############################################################################
+## try to allow target disk(s)'s part tables to be reread by kernel
+#############################################################################
+
+##
+## disable existing (autoenabled) swaps
+##
+
+# disable possibly auto-enabled swap(s) while futzing with partition tables
+# note: now that I realize lvm may be tying up the drives as well as swap, the
+#       motivation for this is less.  The whole 'kernel still uses old table'
+#       seemed in one test, to be quite harmless.  ... Though just now with
+#       centos-5.4 under qemu (hd* devices), resizing did not contribute to
+#       the output of blockdev --getsz or fdisk -s until the part table could
+#       be reread by unmounting and swapoffing every partiton on the disk
+#       in question.
+#
+status "disabling any auto-enabled swaps"
+/sbin/swapoff -a
+progress "1.50"
+
+status "attempting to unmount targets, possibly mounted by automounter"
+try_unmount "${target_root}"
+try_unmount "${target_boot}"
+try_unmount "${target_swap}"
+
+#############################################################################
+## install: modify partition table data as necessary
+#############################################################################
+
+#
+# This sections sets bootable and type flags in the partition table as
+# appropriate.  That is the current maximum extent of dealing with the
+# partition table.
+# (i.e. it is up to the user to resize/repartition/lvm-config as desired).
+# 
+
+boot_target_disk_let=$( get_target_disk_let "${target_boot}" )
+boot_target_disk_type=$( get_target_disk_type "${target_boot}" )
+
+# this if should only be false in the esoteric case of a whole-disk /boot choice
+if ( echo "${target_boot}" | grep -q "^/dev/.d.." ); then 
+
+    boot_target_part_num=$( get_target_part_num "${target_boot}" )
+
+    current_boot_flag=$( fdisk -l "/dev/${boot_target_disk_type}d${boot_target_disk_let}" | grep "${boot_target_disk_type}d${boot_target_disk_let}${boot_target_part_num}" | awk '{print $2}' )
+    if [ "${current_boot_flag}" == '*' ]; then 
+        status "target partition is already bootable"
+    else 
+        status "activating target partition"
+        echo -en "a\n${boot_target_part_num}\nw\n" | fdisk "/dev/${boot_target_disk_type}d${boot_target_disk_let}"
+    fi
+    progress "1.75"
+
+    status "setting ${rootfs_type} partition flag on target boot partition"
+    set_partition_flag \
+	"/dev/${boot_target_disk_type}d${boot_target_disk_let}" \
+	"${boot_target_part_num}" \
+	"83"
+    progress "2.00"
+fi
+
+# this if will be false for wholedisks as well as lvm, either way, no part-table 
+if ( echo "${target_root}" | grep -q "^/dev/.d.." ); then 
+    status "setting ${rootfs_type} partition flag on target root partition"
+    root_target_disk_type=$( get_target_disk_type "${target_root}" )
+    root_target_disk_let=$( get_target_disk_let "${target_root}" )
+    root_target_part_num=$( get_target_part_num "${target_root}" )
+    set_partition_flag \
+	"/dev/${root_target_disk_type}d${root_target_disk_let}" \
+	"${root_target_part_num}" \
+	"83"
+    progress "2.25"
+fi
+
+
+# this if will be false for wholedisks as well as lvm, either way, no part-table 
+if ( echo "${target_swap}" | grep -q "^/dev/.d.." ); then 
+    status "setting swap partition flag on target swap partition"
+    swap_target_disk_type=$( get_target_disk_type "${target_swap}" )
+    swap_target_disk_let=$( get_target_disk_let "${target_swap}" )
+    swap_target_part_num=$( get_target_part_num "${target_swap}" )
+    set_partition_flag \
+	"/dev/${swap_target_disk_type}d${swap_target_disk_let}" \
+	"${swap_target_part_num}" \
+	"82"
+fi
+progress "3.00"
+
+#############################################################################
+## install: enable new swap
+#############################################################################
+
+# enable swap ASAP (after fdisk futzing) to avoid low memory issues
+if [ "${target_swap}" != "none" ]; then
+    status "enabling new swaps"
+    status "formatting swap (${target_swap})..."
+    mkswap "${target_swap}"
+    progress "3.50"
+    /sbin/swapon "${target_swap}"
+fi
+progress "4.00"
+
+
+#############################################################################
+## install: fight aggressive automounter
+#############################################################################
+
+# race condition, one day I'll control the automounter better...
+sleep 7
+
+status "dumping debug info: just before try_unmounts"
+dump_debug_info
+
+status "attempting to unmount targets, possibly mounted by automounter"
+try_unmount "${target_root}"
+try_unmount "${target_boot}"
+try_unmount "${target_swap}"
+
+#############################################################################
+## install: live migrate the rootfs
+#############################################################################
+
+# setup dmsetup and dependencies in tmpfs
+status "preparing non rootfs dmsetup in tmpfs in /dev/shm/zyx-liveinstaller"
+mkdir -p /dev/shm/zyx-liveinstaller
+cp -av --dereference \
+    "$( which dmsetup )" \
+    /dev/shm/zyx-liveinstaller/
+for dep in $( ldd /dev/shm/zyx-liveinstaller/dmsetup ); do
+    if $( echo "${dep}" | grep -q '^/' ); then
+	cp -av --dereference \
+	    "${dep}" \
+	    /dev/shm/zyx-liveinstaller/
+    fi
+done
+
+status "creating temporary rootfs virtual duplicate initially suspended"
+liveos_root_size=$( blockdev --getsize "/dev/mapper/${liveos_root_dev}" )
+dmsetup --noudevrules --noudevsync \
+    create "${liveos_root_dev}-sub" --notable
+dmsetup --noudevrules --noudevsync \
+    load "${liveos_root_dev}-sub" \
+    --table="0 ${liveos_root_size} snapshot /dev/${liveos_root_base_dev} /dev/${liveos_root_overlay_dev} p 8"
+# TODO: catch all errors similarly, or create an eval wrapper 
+if [ $? -ne 0 ]; then
+    error "failed to create temporary rootfs virtual duplicate initially suspended"
+fi
+
+status "loading mirror configuration"
+# note: the hardcoded values here should match what the liveOS creation tool
+#       utilized in the initramfs generation code.
+dmsetup --noudevrules --noudevsync \
+    load "${liveos_root_dev}" \
+    --table="0 ${liveos_root_size} mirror core 2 32 sync 2 /dev/mapper/${liveos_root_dev}-sub 0 ${target_root} 0" 
+if [ $? -ne 0 ]; then
+    error "failed to load mirror table for rootfs"
+fi
+
+status "dumping debug info: just before initiation of rootfs migration"
+dump_debug_info
+
+status "loading and activating mirror configuration"
+LD_LIBRARY_PATH=/dev/shm/zyx-liveinstaller \
+    /dev/shm/zyx-liveinstaller/dmsetup \
+    --noudevrules --noudevsync \
+    suspend "${liveos_root_dev}"
+LD_LIBRARY_PATH=/dev/shm/zyx-liveinstaller \
+    /dev/shm/zyx-liveinstaller/dmsetup \
+    --noudevrules --noudevsync \
+    resume "${liveos_root_dev}-sub"
+LD_LIBRARY_PATH=/dev/shm/zyx-liveinstaller \
+    /dev/shm/zyx-liveinstaller/dmsetup \
+    --noudevrules --noudevsync \
+    resume "${liveos_root_dev}"
+
+status "migrating live root filesystem"
+done=0
+while (( ! ${done} )); do
+    percent_done_fraction_string=$( dmsetup status "${liveos_root_dev}" | awk '{print $7}' )
+    percent_done=$( echo "scale=11;${percent_done_fraction_string}" | bc -l )
+    # the mirror is considered as progress from 5 to 5 + 70
+    percent_done_display=$( echo "scale=2;(${percent_done} * 70 + 5) / 1.0" | bc -l )
+    progress "${percent_done_display}"
+
+    # update progress output every 3 seconds until done
+    if [ "$percent_done" = "1.00000000000" ]; then
+	done=1
+    else
+	sleep 3
+    fi
+done
+
+status "unloading mirror configuration"
+target_root_size=$( blockdev --getsize "${target_root}" )
+dmsetup --noudevrules --noudevsync \
+    reload "${liveos_root_dev}" \
+    --table="0 ${target_root_size} linear ${target_root} 0"
+progress "77.00"
+
+status "deactivating mirror configuration"
+dmsetup --noudevrules --noudevsync \
+    resume "${liveos_root_dev}"
+progress "78.00"
+
+rm -rf /dev/shm/zyx-liveinstaller
+
+#############################################################################
+## install: dereferencing symlinks to the livemedia before freeing it
+#############################################################################
+
+if [ "${distro_type}" == "zyx" ]; then
+
+    # ZyX(tm) spiffily saves space by not storing redundant copies of the same
+    # 3MB kernel file on the Live media.
+
+    # unsymlinkify kernel
+    rm -f "/boot/vmlinuz-${kernelversion}"
+    cp /mnt/.LiveOS/prime_rootfs/boot/vmlinuz.1 \
+	"/boot/vmlinuz-${kernelversion}"
+
+    # unsymlinkify zyx-live-iso-to-disk
+    cp $( readlink -f /usr/bin/zyx-live-iso-to-disk ) \
+	/usr/bin/zyx-live-iso-to-disk.actual
+    rm -f /usr/bin/zyx-live-iso-to-disk
+    mv /usr/bin/zyx-live-iso-to-disk.actual \
+	/usr/bin/zyx-live-iso-to-disk
+fi
+progress "79.00"
+
+
+#############################################################################
+## install: free livemedia resources
+#############################################################################
+
+status "freeing livemedia resources: ${liveos_root_dev}-sub"
+dmsetup remove "${liveos_root_dev}-sub"
+
+if [ "${distro_type}" == "zyx" ]; then
+
+    status "freeing livemedia resources: precow_rootfs mount"
+    umount -l /mnt/.LiveOS/precow_rootfs
+
+    status "freeing livemedia resources: zyx-liveos-ro"
+    dmsetup remove zyx-liveos-ro
+fi
+
+
+status "freeing livemedia resources: loopdev-${liveos_root_overlay_dev}"
+losetup -d "/dev/${liveos_root_overlay_dev}"
+
+if [ "${distro_type}" == "zyx" ]; then
+    losetup -d "/dev/${liveos_root_overlay_dev}_readonly"
+
+    # bug workaround
+    # note: I haven't looked at whether this and other -l's are necessary
+    #       in years.  
+    # unmount the overlayfs when the image it contains is no longer in use
+    # XXX: need to make this conditional, i.e. not mounted when normal livedvdboot
+    umount -l /mnt/.LiveOS/overlayfs > /dev/null 2>&1
+
+elif [ "${distro_type}" == "fedora" ]; then
+
+    # note: ifs are for now for centos sharing the distrotype
+
+    # nautilus automounting could use more configuration facilitation
+    if [ -b /dev/mapper/live-osimg-min ]; then
+	try_unmount "/dev/mapper/live-osimg-min"
+
+	status "freeing unneeded resources: live-osimg-min"
+	dmsetup remove live-osimg-min
+    fi
+
+    if [ -b "/dev/${liveos_root_min_overlay_dev}" ]; then
+	status "freeing unneeded resources: loopdev-live-osmin"
+	losetup -d "/dev/${liveos_root_min_overlay_dev}"
+    fi
+
+    if [ -b "/dev/${liveos_root_min_container_dev}" ]; then
+	status "freeing unneeded resources: loopdev-live-squashed-osmin"
+	losetup -d "/dev/${liveos_root_min_container_dev}"
+    fi
+
+fi
+
+status "freeing livemedia resources: loopdev-${liveos_root_base_dev}"
+losetup -d "/dev/${liveos_root_base_dev}"
+
+if [ "${distro_type}" == "zyx" ]; then
+    # unmount the container_rootfs when the image it contains is no longer in use
+    umount -l /mnt/.LiveOS/container_rootfs
+fi
+
+status "freeing livemedia resources: loopdev-${liveos_root_container_dev}"
+losetup -d "/dev/${liveos_root_container_dev}"
+
+if [ "${distro_type}" == "zyx" ]; then
+    # install music from the LiveMedia as well
+    if [ -d /mnt/.LiveOS/prime_rootfs/music ]; then
+	cp -av /mnt/.LiveOS/prime_rootfs/music /usr/share
+    fi
+    # unmount the prime_rootfs when the image it contains is no longer in use
+    umount -l /mnt/.LiveOS/prime_rootfs
+    # keep user symlinks working
+    mkdir -p /mnt/.LiveOS/prime_rootfs
+    ln -s /usr/share/music \
+	/mnt/.LiveOS/prime_rootfs/music
+
+elif [ "${distro_type}" == "fedora" ]; then
+    umount /mnt/live
+fi
+
+# undo fedora's special Live tmpfs usage
+if [ "${distro_type}" == "fedora" ]; then
+    
+    # migrate as much as possible out of tmpfs /var/cache/yum to rootfs
+    cp -av /var/cache/yum /var/cache/.newyum
+    umount -l /var/cache/yum
+    mv /var/cache/yum /var/cache/.oldyum
+    mv /var/cache/.newyum /var/cache/yum
+
+    # migrate as much as possible out of tmpfs /var/tmp to rootfs
+    cp -av /var/tmp /var/.newtmp
+
+    umount -l /var/tmp
+    mv /var/tmp /var/.oldtmp
+    mv /var/.newtmp /var/tmp
+
+    if ( cat /proc/self/mounts | awk '{print $2}' | grep -q '^/tmp$' ); then
+        # migrate as much as possible out of tmpfs tmp to rootfs
+        # yes, this is sick, in both the good and bad way
+	    mkdir /.oldtmp
+	    chmod 777 /.oldtmp
+	    chmod +t /.oldtmp 
+	    mkdir /.newtmp
+	    chmod 777 /.newtmp
+	    chmod +t /.newtmp 
+	    for file in $( find /tmp -maxdepth 1 -mindepth 1 ); do 
+		filename=$( basename "${file}" )
+		ln -s \
+		    "/.oldtmp/${filename}" \
+		    "/.newtmp/${filename}"
+		chown \
+		    --no-dereference \
+		    --reference="/.oldtmp/${filename}" \
+		    "/.newtmp/${filename}"
+	    done
+	    mount --bind /tmp /.oldtmp
+	    umount -l /tmp
+	    mount --bind /.newtmp /tmp
+    fi
+fi
+
+progress "80.00"
+
+#############################################################################
+## install: resize rootfs to full installed size
+#############################################################################
+
+status "expanding root filesystem to largest possible size"
+resize2fs -p "/dev/mapper/${liveos_root_dev}"
+# give a non-live-os label to the rootfs
+status "setting root filesystem label to zyx-rootfs"
+e2label /dev/root zyx-rootfs
+status "randomizing initial rootfs uuid"
+tune2fs -U random "/dev/mapper/${liveos_root_dev}"
+progress "90.00"
+
+
+#############################################################################
+## install: configure /dev/root
+#############################################################################
+
+status "configuring /dev/root symlink"
+rm -f /dev/root
+ln -s "${target_root}" /dev/root
+progress "91.00"
+
+#############################################################################
+## install: configure /etc/fstab
+#############################################################################
+
+status "configuring fstab"
+mv /etc/fstab /tmp/zyx-liveinstaller.old.fstab
+
+# fedora likes the UUIDs, and grubby can't seem to work without them.
+if ( blkid -o full "${target_root}" | grep -q UUID ); then
+    if [ "${distro_string}" != "CentOS" ]; then
+	# CentOS-5.4 mkinitrd's nash's resolvedevice function
+	# will prefer an lvm linear mapping to the native partition,
+	# resulting in an unbootable initrd for such a case
+        target_root_uuid=$( get_uuid "${target_root}" )
+        fstab_root_entry="UUID=${target_root_uuid}"
+    else
+        fstab_root_entry="${target_root}"
+    fi
+else
+    fstab_root_entry="${target_root}"
+fi
+
+if ( blkid -o full "${target_swap}" | grep -q UUID ); then
+    target_swap_uuid=$( get_uuid "${target_swap}" )
+    fstab_swap_entry="UUID=${target_swap_uuid}"
+else
+    fstab_swap_entry="${target_swap}"
+fi
+
+# generate new fstab
+cat<<EOF> /etc/fstab
+${fstab_root_entry} / ${rootfs_type} defaults,noatime 0 0
+devpts                  /dev/pts                devpts  gid=5,mode=620  0 0
+tmpfs                   /dev/shm                tmpfs   defaults        0 0
+proc                    /proc                   proc    defaults        0 0
+sysfs                   /sys                    sysfs   defaults        0 0
+EOF
+
+if [ "${target_swap}" != "none" ]; then
+    cat<<EOF>> /etc/fstab
+${fstab_swap_entry} swap swap swap 0 0
+EOF
+fi
+
+progress "92.00"
+
+#############################################################################
+## install: LiveOS deconfiguration
+#############################################################################
+status "unconfiguring LiveOS boot environment"
+# TODO: need to also undo everything done live initrd
+# TODO: need to also undo everything done by init.d/*live*
+#       (perhaps more than just this)
+
+
+if [ "${distro_type}" == "zyx" ]; then
+    rm -f /.zyxlive*
+
+    mv /etc/rc.d/init.d/functions \
+	/etc/rc.d/init.d/functions.zyx_live
+    cp /etc/rc.d/init.d/functions.orig \
+	/etc/rc.d/init.d/functions
+
+    mv /etc/rc.d/init.d/halt \
+	/etc/rc.d/init.d/halt.zyx_live
+    cp /etc/rc.d/init.d/halt.orig \
+	/etc/rc.d/init.d/halt
+
+elif [ "${distro_type}" == "fedora" ]; then
+
+    # remove entries added to udev by initrd
+    if [ -f /lib/udev/rules.d/50-udev-default.rules ]; then
+	mv /lib/udev/rules.d/50-udev-default.rules /tmp
+	cat /tmp/50-udev-default.rules | \
+	    grep -v "=\"live" > /lib/udev/rules.d/50-udev-default.rules 
+	chmod 644 /lib/udev/rules.d/50-udev-default.rules  
+	restorecon /lib/udev/rules.d/50-udev-default.rules  
+    fi
+
+    rm -f /home/centos/Desktop/liveinst.desktop
+    rm -f /home/centos/Desktop/zyx-liveinstaller.desktop
+    rm -f /home/liveuser/Desktop/liveinst.desktop
+    rm -f /home/liveuser/Desktop/zyx-liveinstaller.desktop
+fi
+
+rm -f /.live*
+progress "93.00"
+
+#############################################################################
+## install: boot volume creation
+#############################################################################
+if [ "${target_root}" != "${target_boot}" ]; then
+    status "formatting /boot (${target_boot})..."
+
+    # use same fstype as rootfs, unless f11
+    if [ "${need_seperate_boot}" == "yes" ]; then
+	bootfs_type="ext3"
+    else
+	bootfs_type="${rootfs_type}"
+    fi
+
+    "mkfs.${bootfs_type}" "${target_boot}"
+
+    if ( blkid -o full "${target_boot}" | grep -q UUID ); then
+	target_boot_uuid=$( get_uuid "${target_boot}" )
+	fstab_boot_entry="UUID=${target_boot_uuid}"
+    else
+	fstab_boot_entry="${target_boot}"
+    fi
+
+    status "adding /boot to fstab..."
+    cat<<EOF>> /etc/fstab
+${fstab_boot_entry} /boot ${bootfs_type} defaults,noatime 0 0
+EOF
+
+    status "setting up /boot"
+    mv /boot /boot.tmp
+    mkdir /boot
+    mount /boot
+    cp -a /boot.tmp/* /boot
+    rm -rf /boot.tmp
+fi
+progress "94.00"
+
+
+#############################################################################
+## install: make initramfs 
+#############################################################################
+
+status "making initramfs"
+
+if [ "${distro_type}" == "zyx" ]; then
+    # I own an epia10k, and this has been required
+    ${mkinitramfs} \
+	--add pata_via \
+	"/boot/${initramfs_name}-${kernelversion}.img" \
+	"${kernelversion}"
+else 
+    ${mkinitramfs} \
+	"/boot/${initramfs_name}-${kernelversion}.img" \
+	"${kernelversion}"
+fi
+
+progress "96.00"
+
+#############################################################################
+## install: bootloader configuration
+#############################################################################
+
+status "configuring grub"
+
+# calculate target disk reference values 
+if ( echo "${target_boot}" | grep -q "^/dev/.d.." ); then 
+    boot_grub_target_part_num=$( get_grub_target_part_num "${target_boot}" )
+    boot_grub_target_disk_num=$( get_grub_target_disk_num "${target_boot}" )
+    boot_grub_target_parent_disk_spec="(hd${boot_grub_target_disk_num})"
+    boot_grub_target_disk_spec="(hd${boot_grub_target_disk_num},${boot_grub_target_part_num})"
+
+elif ( echo "${target_boot}" | grep -q "^/dev/.d." ); then 
+    # wholedisk corner case
+    boot_grub_target_disk_num=$( get_grub_target_disk_num "${target_boot}" )
+    boot_grub_target_parent_disk_spec="(hd${boot_grub_target_disk_num})"
+fi
+
+# if /boot is on an external usb drive, force drive 0 in grub.cfg disk spec, 
+# e.g. (hd2... with (hd0...
+if ( /lib/udev/path_id "/block/${boot_target_disk_type}d${boot_target_disk_let}" | grep -q "\-usb\-" ); then
+    cfg_boot_target_disk_let="a"
+    cfg_boot_target_disk_type="s"
+    cfg_boot_grub_target_disk_spec=$( echo "${boot_grub_target_disk_spec}" | sed -e 's/^(hd./(hd0/' )
+else
+    cfg_boot_target_disk_let="${boot_target_disk_let}"
+    cfg_boot_target_disk_type="${boot_target_disk_type}"
+    cfg_boot_grub_target_disk_spec="${boot_grub_target_disk_spec}"
+fi
+
+# detect and collect kernel arguments that should be put in grub.conf
+kargs=""
+for karg in $( < /proc/cmdline ); do
+    # strip out ^initrd= ^root= ^rootfstype= ro rw liveimg ^overlay 
+    #           ^BOOT_IMAGE=, [1-5], leaving rhgb, quiet, and whatever else 
+    if ( echo "${karg}" | grep -q "^initrd=" ); then
+	kargs="${kargs}"
+    elif ( echo "${karg}" | grep -q "^root=" ); then
+	kargs="${kargs}"
+    elif ( echo "${karg}" | grep -q "^rootfstype=" ); then
+	kargs="${kargs}"
+    elif ( echo "${karg}" | grep -q "^ro" ); then
+	kargs="${kargs}"
+    elif ( echo "${karg}" | grep -q "^rw" ); then
+	kargs="${kargs}"
+    elif ( echo "${karg}" | grep -q "^liveimg" ); then
+	kargs="${kargs}"
+    elif ( echo "${karg}" | grep -q "^[12345]" ); then
+	kargs="${kargs}"
+    elif ( echo "${karg}" | grep -q "^overlay" ); then
+	kargs="${kargs}"
+    elif ( echo "${karg}" | grep -q "^reset_overlay" ); then
+	kargs="${kargs}"
+    elif ( echo "${karg}" | grep -q "^autojam" ); then
+	kargs="${kargs}"
+    elif ( echo "${karg}" | grep -q "^BOOT_IMAGE=" ); then
+	kargs="${kargs}"
+    else
+	kargs="${kargs} ${karg}"
+    fi
+done
+
+# write out new simple grub configuration
+cat<<EOF> /boot/grub/grub.conf
+# grub.conf generated by anaconda
+#
+# Note that you do not have to rerun grub after making changes to this file
+# NOTICE:  You have a /boot partition.  This means that
+#          all kernel and initrd paths are relative to /boot/, eg.
+#          root ${cfg_boot_grub_target_disk_spec}
+#          kernel ${path_to_boot}/vmlinuz-version ro root=${fstab_root_entry}${kargs}
+#          initrd ${path_to_boot}/${initramfs_name}-version.img
+#boot=/dev/${cfg_boot_target_disk_type}d${cfg_boot_target_disk_let}
+default=0
+timeout=0
+splashimage=${cfg_boot_grub_target_disk_spec}${path_to_boot}/grub/splash.xpm.gz
+hiddenmenu
+title ${distro_string} (${kernelversion})
+        root ${cfg_boot_grub_target_disk_spec}
+        kernel ${path_to_boot}/vmlinuz-${kernelversion} ro root=${fstab_root_entry}${kargs}
+        initrd ${path_to_boot}/${initramfs_name}-${kernelversion}.img
+EOF
+
+# in ZyX this is already in place
+if [ ! -L /etc/grub.conf ]; then
+    ln -s ../boot/grub/grub.conf /etc/grub.conf
+fi
+
+status "configuring grubby kernel updates"
+cat << EOF > /etc/sysconfig/kernel
+# UPDATEDEFAULT specifies if new-kernel-pkg should make
+# new kernels the default
+UPDATEDEFAULT=yes
+
+# DEFAULTKERNEL specifies the default kernel package type
+DEFAULTKERNEL=kernel
+EOF
+
+progress "98.00"
+
+#############################################################################
+## install: bootloader installation
+#############################################################################
+
+status "installing grub bootloader"
+cp /usr/share/grub/i386-redhat/*stage* /boot/grub/
+
+echo -en "root ${boot_grub_target_disk_spec}\nsetup ${boot_grub_target_parent_disk_spec}\n" | grub --batch
+# grub output doesn't (always) end with a newline
+echo -en "\n"
+
+status "dumping debug info: installer end"
+dump_debug_info
+
+progress "100.00"
+
+
+#############################################################################
+## install: done
+#############################################################################
+
+status "you may now eject or remove the live media"
+status "installation complete, enjoy...                 -dmc"
+
+ 
+#############################################################################
+## exit: restore stdout and close fd3(logfile), then exit 
+#############################################################################
+
+exec 1>&3 3>&-
+exec 2>&4 4>&-
+exit 0
+
+#############################################################################
+## done
+#############################################################################
+###
+########################################################################
+########################################################################
+########################################################################
+######  Copyright 2009 Douglas McClendon <dmc AT viros DOT org>  #######
+########################################################################
+########################################################################
+########################################################################
+###
+
+
+#                     GNU GENERAL PUBLIC LICENSE
+#                        Version 3, 29 June 2007
+# 
+#  Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>
+#  Everyone is permitted to copy and distribute verbatim copies
+#  of this license document, but changing it is not allowed.
+# 
+#                             Preamble
+# 
+#   The GNU General Public License is a free, copyleft license for
+# software and other kinds of works.
+# 
+#   The licenses for most software and other practical works are designed
+# to take away your freedom to share and change the works.  By contrast,
+# the GNU General Public License is intended to guarantee your freedom to
+# share and change all versions of a program--to make sure it remains free
+# software for all its users.  We, the Free Software Foundation, use the
+# GNU General Public License for most of our software; it applies also to
+# any other work released this way by its authors.  You can apply it to
+# your programs, too.
+# 
+#   When we speak of free software, we are referring to freedom, not
+# price.  Our General Public Licenses are designed to make sure that you
+# have the freedom to distribute copies of free software (and charge for
+# them if you wish), that you receive source code or can get it if you
+# want it, that you can change the software or use pieces of it in new
+# free programs, and that you know you can do these things.
+# 
+#   To protect your rights, we need to prevent others from denying you
+# these rights or asking you to surrender the rights.  Therefore, you have
+# certain responsibilities if you distribute copies of the software, or if
+# you modify it: responsibilities to respect the freedom of others.
+# 
+#   For example, if you distribute copies of such a program, whether
+# gratis or for a fee, you must pass on to the recipients the same
+# freedoms that you received.  You must make sure that they, too, receive
+# or can get the source code.  And you must show them these terms so they
+# know their rights.
+# 
+#   Developers that use the GNU GPL protect your rights with two steps:
+# (1) assert copyright on the software, and (2) offer you this License
+# giving you legal permission to copy, distribute and/or modify it.
+# 
+#   For the developers' and authors' protection, the GPL clearly explains
+# that there is no warranty for this free software.  For both users' and
+# authors' sake, the GPL requires that modified versions be marked as
+# changed, so that their problems will not be attributed erroneously to
+# authors of previous versions.
+# 
+#   Some devices are designed to deny users access to install or run
+# modified versions of the software inside them, although the manufacturer
+# can do so.  This is fundamentally incompatible with the aim of
+# protecting users' freedom to change the software.  The systematic
+# pattern of such abuse occurs in the area of products for individuals to
+# use, which is precisely where it is most unacceptable.  Therefore, we
+# have designed this version of the GPL to prohibit the practice for those
+# products.  If such problems arise substantially in other domains, we
+# stand ready to extend this provision to those domains in future versions
+# of the GPL, as needed to protect the freedom of users.
+# 
+#   Finally, every program is threatened constantly by software patents.
+# States should not allow patents to restrict development and use of
+# software on general-purpose computers, but in those that do, we wish to
+# avoid the special danger that patents applied to a free program could
+# make it effectively proprietary.  To prevent this, the GPL assures that
+# patents cannot be used to render the program non-free.
+# 
+#   The precise terms and conditions for copying, distribution and
+# modification follow.
+# 
+#                        TERMS AND CONDITIONS
+# 
+#   0. Definitions.
+# 
+#   "This License" refers to version 3 of the GNU General Public License.
+# 
+#   "Copyright" also means copyright-like laws that apply to other kinds of
+# works, such as semiconductor masks.
+# 
+#   "The Program" refers to any copyrightable work licensed under this
+# License.  Each licensee is addressed as "you".  "Licensees" and
+# "recipients" may be individuals or organizations.
+# 
+#   To "modify" a work means to copy from or adapt all or part of the work
+# in a fashion requiring copyright permission, other than the making of an
+# exact copy.  The resulting work is called a "modified version" of the
+# earlier work or a work "based on" the earlier work.
+# 
+#   A "covered work" means either the unmodified Program or a work based
+# on the Program.
+# 
+#   To "propagate" a work means to do anything with it that, without
+# permission, would make you directly or secondarily liable for
+# infringement under applicable copyright law, except executing it on a
+# computer or modifying a private copy.  Propagation includes copying,
+# distribution (with or without modification), making available to the
+# public, and in some countries other activities as well.
+# 
+#   To "convey" a work means any kind of propagation that enables other
+# parties to make or receive copies.  Mere interaction with a user through
+# a computer network, with no transfer of a copy, is not conveying.
+# 
+#   An interactive user interface displays "Appropriate Legal Notices"
+# to the extent that it includes a convenient and prominently visible
+# feature that (1) displays an appropriate copyright notice, and (2)
+# tells the user that there is no warranty for the work (except to the
+# extent that warranties are provided), that licensees may convey the
+# work under this License, and how to view a copy of this License.  If
+# the interface presents a list of user commands or options, such as a
+# menu, a prominent item in the list meets this criterion.
+# 
+#   1. Source Code.
+# 
+#   The "source code" for a work means the preferred form of the work
+# for making modifications to it.  "Object code" means any non-source
+# form of a work.
+# 
+#   A "Standard Interface" means an interface that either is an official
+# standard defined by a recognized standards body, or, in the case of
+# interfaces specified for a particular programming language, one that
+# is widely used among developers working in that language.
+# 
+#   The "System Libraries" of an executable work include anything, other
+# than the work as a whole, that (a) is included in the normal form of
+# packaging a Major Component, but which is not part of that Major
+# Component, and (b) serves only to enable use of the work with that
+# Major Component, or to implement a Standard Interface for which an
+# implementation is available to the public in source code form.  A
+# "Major Component", in this context, means a major essential component
+# (kernel, window system, and so on) of the specific operating system
+# (if any) on which the executable work runs, or a compiler used to
+# produce the work, or an object code interpreter used to run it.
+# 
+#   The "Corresponding Source" for a work in object code form means all
+# the source code needed to generate, install, and (for an executable
+# work) run the object code and to modify the work, including scripts to
+# control those activities.  However, it does not include the work's
+# System Libraries, or general-purpose tools or generally available free
+# programs which are used unmodified in performing those activities but
+# which are not part of the work.  For example, Corresponding Source
+# includes interface definition files associated with source files for
+# the work, and the source code for shared libraries and dynamically
+# linked subprograms that the work is specifically designed to require,
+# such as by intimate data communication or control flow between those
+# subprograms and other parts of the work.
+# 
+#   The Corresponding Source need not include anything that users
+# can regenerate automatically from other parts of the Corresponding
+# Source.
+# 
+#   The Corresponding Source for a work in source code form is that
+# same work.
+# 
+#   2. Basic Permissions.
+# 
+#   All rights granted under this License are granted for the term of
+# copyright on the Program, and are irrevocable provided the stated
+# conditions are met.  This License explicitly affirms your unlimited
+# permission to run the unmodified Program.  The output from running a
+# covered work is covered by this License only if the output, given its
+# content, constitutes a covered work.  This License acknowledges your
+# rights of fair use or other equivalent, as provided by copyright law.
+# 
+#   You may make, run and propagate covered works that you do not
+# convey, without conditions so long as your license otherwise remains
+# in force.  You may convey covered works to others for the sole purpose
+# of having them make modifications exclusively for you, or provide you
+# with facilities for running those works, provided that you comply with
+# the terms of this License in conveying all material for which you do
+# not control copyright.  Those thus making or running the covered works
+# for you must do so exclusively on your behalf, under your direction
+# and control, on terms that prohibit them from making any copies of
+# your copyrighted material outside their relationship with you.
+# 
+#   Conveying under any other circumstances is permitted solely under
+# the conditions stated below.  Sublicensing is not allowed; section 10
+# makes it unnecessary.
+# 
+#   3. Protecting Users' Legal Rights From Anti-Circumvention Law.
+# 
+#   No covered work shall be deemed part of an effective technological
+# measure under any applicable law fulfilling obligations under article
+# 11 of the WIPO copyright treaty adopted on 20 December 1996, or
+# similar laws prohibiting or restricting circumvention of such
+# measures.
+# 
+#   When you convey a covered work, you waive any legal power to forbid
+# circumvention of technological measures to the extent such circumvention
+# is effected by exercising rights under this License with respect to
+# the covered work, and you disclaim any intention to limit operation or
+# modification of the work as a means of enforcing, against the work's
+# users, your or third parties' legal rights to forbid circumvention of
+# technological measures.
+# 
+#   4. Conveying Verbatim Copies.
+# 
+#   You may convey verbatim copies of the Program's source code as you
+# receive it, in any medium, provided that you conspicuously and
+# appropriately publish on each copy an appropriate copyright notice;
+# keep intact all notices stating that this License and any
+# non-permissive terms added in accord with section 7 apply to the code;
+# keep intact all notices of the absence of any warranty; and give all
+# recipients a copy of this License along with the Program.
+# 
+#   You may charge any price or no price for each copy that you convey,
+# and you may offer support or warranty protection for a fee.
+# 
+#   5. Conveying Modified Source Versions.
+# 
+#   You may convey a work based on the Program, or the modifications to
+# produce it from the Program, in the form of source code under the
+# terms of section 4, provided that you also meet all of these conditions:
+# 
+#     a) The work must carry prominent notices stating that you modified
+#     it, and giving a relevant date.
+# 
+#     b) The work must carry prominent notices stating that it is
+#     released under this License and any conditions added under section
+#     7.  This requirement modifies the requirement in section 4 to
+#     "keep intact all notices".
+# 
+#     c) You must license the entire work, as a whole, under this
+#     License to anyone who comes into possession of a copy.  This
+#     License will therefore apply, along with any applicable section 7
+#     additional terms, to the whole of the work, and all its parts,
+#     regardless of how they are packaged.  This License gives no
+#     permission to license the work in any other way, but it does not
+#     invalidate such permission if you have separately received it.
+# 
+#     d) If the work has interactive user interfaces, each must display
+#     Appropriate Legal Notices; however, if the Program has interactive
+#     interfaces that do not display Appropriate Legal Notices, your
+#     work need not make them do so.
+# 
+#   A compilation of a covered work with other separate and independent
+# works, which are not by their nature extensions of the covered work,
+# and which are not combined with it such as to form a larger program,
+# in or on a volume of a storage or distribution medium, is called an
+# "aggregate" if the compilation and its resulting copyright are not
+# used to limit the access or legal rights of the compilation's users
+# beyond what the individual works permit.  Inclusion of a covered work
+# in an aggregate does not cause this License to apply to the other
+# parts of the aggregate.
+# 
+#   6. Conveying Non-Source Forms.
+# 
+#   You may convey a covered work in object code form under the terms
+# of sections 4 and 5, provided that you also convey the
+# machine-readable Corresponding Source under the terms of this License,
+# in one of these ways:
+# 
+#     a) Convey the object code in, or embodied in, a physical product
+#     (including a physical distribution medium), accompanied by the
+#     Corresponding Source fixed on a durable physical medium
+#     customarily used for software interchange.
+# 
+#     b) Convey the object code in, or embodied in, a physical product
+#     (including a physical distribution medium), accompanied by a
+#     written offer, valid for at least three years and valid for as
+#     long as you offer spare parts or customer support for that product
+#     model, to give anyone who possesses the object code either (1) a
+#     copy of the Corresponding Source for all the software in the
+#     product that is covered by this License, on a durable physical
+#     medium customarily used for software interchange, for a price no
+#     more than your reasonable cost of physically performing this
+#     conveying of source, or (2) access to copy the
+#     Corresponding Source from a network server at no charge.
+# 
+#     c) Convey individual copies of the object code with a copy of the
+#     written offer to provide the Corresponding Source.  This
+#     alternative is allowed only occasionally and noncommercially, and
+#     only if you received the object code with such an offer, in accord
+#     with subsection 6b.
+# 
+#     d) Convey the object code by offering access from a designated
+#     place (gratis or for a charge), and offer equivalent access to the
+#     Corresponding Source in the same way through the same place at no
+#     further charge.  You need not require recipients to copy the
+#     Corresponding Source along with the object code.  If the place to
+#     copy the object code is a network server, the Corresponding Source
+#     may be on a different server (operated by you or a third party)
+#     that supports equivalent copying facilities, provided you maintain
+#     clear directions next to the object code saying where to find the
+#     Corresponding Source.  Regardless of what server hosts the
+#     Corresponding Source, you remain obligated to ensure that it is
+#     available for as long as needed to satisfy these requirements.
+# 
+#     e) Convey the object code using peer-to-peer transmission, provided
+#     you inform other peers where the object code and Corresponding
+#     Source of the work are being offered to the general public at no
+#     charge under subsection 6d.
+# 
+#   A separable portion of the object code, whose source code is excluded
+# from the Corresponding Source as a System Library, need not be
+# included in conveying the object code work.
+# 
+#   A "User Product" is either (1) a "consumer product", which means any
+# tangible personal property which is normally used for personal, family,
+# or household purposes, or (2) anything designed or sold for incorporation
+# into a dwelling.  In determining whether a product is a consumer product,
+# doubtful cases shall be resolved in favor of coverage.  For a particular
+# product received by a particular user, "normally used" refers to a
+# typical or common use of that class of product, regardless of the status
+# of the particular user or of the way in which the particular user
+# actually uses, or expects or is expected to use, the product.  A product
+# is a consumer product regardless of whether the product has substantial
+# commercial, industrial or non-consumer uses, unless such uses represent
+# the only significant mode of use of the product.
+# 
+#   "Installation Information" for a User Product means any methods,
+# procedures, authorization keys, or other information required to install
+# and execute modified versions of a covered work in that User Product from
+# a modified version of its Corresponding Source.  The information must
+# suffice to ensure that the continued functioning of the modified object
+# code is in no case prevented or interfered with solely because
+# modification has been made.
+# 
+#   If you convey an object code work under this section in, or with, or
+# specifically for use in, a User Product, and the conveying occurs as
+# part of a transaction in which the right of possession and use of the
+# User Product is transferred to the recipient in perpetuity or for a
+# fixed term (regardless of how the transaction is characterized), the
+# Corresponding Source conveyed under this section must be accompanied
+# by the Installation Information.  But this requirement does not apply
+# if neither you nor any third party retains the ability to install
+# modified object code on the User Product (for example, the work has
+# been installed in ROM).
+# 
+#   The requirement to provide Installation Information does not include a
+# requirement to continue to provide support service, warranty, or updates
+# for a work that has been modified or installed by the recipient, or for
+# the User Product in which it has been modified or installed.  Access to a
+# network may be denied when the modification itself materially and
+# adversely affects the operation of the network or violates the rules and
+# protocols for communication across the network.
+# 
+#   Corresponding Source conveyed, and Installation Information provided,
+# in accord with this section must be in a format that is publicly
+# documented (and with an implementation available to the public in
+# source code form), and must require no special password or key for
+# unpacking, reading or copying.
+# 
+#   7. Additional Terms.
+# 
+#   "Additional permissions" are terms that supplement the terms of this
+# License by making exceptions from one or more of its conditions.
+# Additional permissions that are applicable to the entire Program shall
+# be treated as though they were included in this License, to the extent
+# that they are valid under applicable law.  If additional permissions
+# apply only to part of the Program, that part may be used separately
+# under those permissions, but the entire Program remains governed by
+# this License without regard to the additional permissions.
+# 
+#   When you convey a copy of a covered work, you may at your option
+# remove any additional permissions from that copy, or from any part of
+# it.  (Additional permissions may be written to require their own
+# removal in certain cases when you modify the work.)  You may place
+# additional permissions on material, added by you to a covered work,
+# for which you have or can give appropriate copyright permission.
+# 
+#   Notwithstanding any other provision of this License, for material you
+# add to a covered work, you may (if authorized by the copyright holders of
+# that material) supplement the terms of this License with terms:
+# 
+#     a) Disclaiming warranty or limiting liability differently from the
+#     terms of sections 15 and 16 of this License; or
+# 
+#     b) Requiring preservation of specified reasonable legal notices or
+#     author attributions in that material or in the Appropriate Legal
+#     Notices displayed by works containing it; or
+# 
+#     c) Prohibiting misrepresentation of the origin of that material, or
+#     requiring that modified versions of such material be marked in
+#     reasonable ways as different from the original version; or
+# 
+#     d) Limiting the use for publicity purposes of names of licensors or
+#     authors of the material; or
+# 
+#     e) Declining to grant rights under trademark law for use of some
+#     trade names, trademarks, or service marks; or
+# 
+#     f) Requiring indemnification of licensors and authors of that
+#     material by anyone who conveys the material (or modified versions of
+#     it) with contractual assumptions of liability to the recipient, for
+#     any liability that these contractual assumptions directly impose on
+#     those licensors and authors.
+# 
+#   All other non-permissive additional terms are considered "further
+# restrictions" within the meaning of section 10.  If the Program as you
+# received it, or any part of it, contains a notice stating that it is
+# governed by this License along with a term that is a further
+# restriction, you may remove that term.  If a license document contains
+# a further restriction but permits relicensing or conveying under this
+# License, you may add to a covered work material governed by the terms
+# of that license document, provided that the further restriction does
+# not survive such relicensing or conveying.
+# 
+#   If you add terms to a covered work in accord with this section, you
+# must place, in the relevant source files, a statement of the
+# additional terms that apply to those files, or a notice indicating
+# where to find the applicable terms.
+# 
+#   Additional terms, permissive or non-permissive, may be stated in the
+# form of a separately written license, or stated as exceptions;
+# the above requirements apply either way.
+# 
+#   8. Termination.
+# 
+#   You may not propagate or modify a covered work except as expressly
+# provided under this License.  Any attempt otherwise to propagate or
+# modify it is void, and will automatically terminate your rights under
+# this License (including any patent licenses granted under the third
+# paragraph of section 11).
+# 
+#   However, if you cease all violation of this License, then your
+# license from a particular copyright holder is reinstated (a)
+# provisionally, unless and until the copyright holder explicitly and
+# finally terminates your license, and (b) permanently, if the copyright
+# holder fails to notify you of the violation by some reasonable means
+# prior to 60 days after the cessation.
+# 
+#   Moreover, your license from a particular copyright holder is
+# reinstated permanently if the copyright holder notifies you of the
+# violation by some reasonable means, this is the first time you have
+# received notice of violation of this License (for any work) from that
+# copyright holder, and you cure the violation prior to 30 days after
+# your receipt of the notice.
+# 
+#   Termination of your rights under this section does not terminate the
+# licenses of parties who have received copies or rights from you under
+# this License.  If your rights have been terminated and not permanently
+# reinstated, you do not qualify to receive new licenses for the same
+# material under section 10.
+# 
+#   9. Acceptance Not Required for Having Copies.
+# 
+#   You are not required to accept this License in order to receive or
+# run a copy of the Program.  Ancillary propagation of a covered work
+# occurring solely as a consequence of using peer-to-peer transmission
+# to receive a copy likewise does not require acceptance.  However,
+# nothing other than this License grants you permission to propagate or
+# modify any covered work.  These actions infringe copyright if you do
+# not accept this License.  Therefore, by modifying or propagating a
+# covered work, you indicate your acceptance of this License to do so.
+# 
+#   10. Automatic Licensing of Downstream Recipients.
+# 
+#   Each time you convey a covered work, the recipient automatically
+# receives a license from the original licensors, to run, modify and
+# propagate that work, subject to this License.  You are not responsible
+# for enforcing compliance by third parties with this License.
+# 
+#   An "entity transaction" is a transaction transferring control of an
+# organization, or substantially all assets of one, or subdividing an
+# organization, or merging organizations.  If propagation of a covered
+# work results from an entity transaction, each party to that
+# transaction who receives a copy of the work also receives whatever
+# licenses to the work the party's predecessor in interest had or could
+# give under the previous paragraph, plus a right to possession of the
+# Corresponding Source of the work from the predecessor in interest, if
+# the predecessor has it or can get it with reasonable efforts.
+# 
+#   You may not impose any further restrictions on the exercise of the
+# rights granted or affirmed under this License.  For example, you may
+# not impose a license fee, royalty, or other charge for exercise of
+# rights granted under this License, and you may not initiate litigation
+# (including a cross-claim or counterclaim in a lawsuit) alleging that
+# any patent claim is infringed by making, using, selling, offering for
+# sale, or importing the Program or any portion of it.
+# 
+#   11. Patents.
+# 
+#   A "contributor" is a copyright holder who authorizes use under this
+# License of the Program or a work on which the Program is based.  The
+# work thus licensed is called the contributor's "contributor version".
+# 
+#   A contributor's "essential patent claims" are all patent claims
+# owned or controlled by the contributor, whether already acquired or
+# hereafter acquired, that would be infringed by some manner, permitted
+# by this License, of making, using, or selling its contributor version,
+# but do not include claims that would be infringed only as a
+# consequence of further modification of the contributor version.  For
+# purposes of this definition, "control" includes the right to grant
+# patent sublicenses in a manner consistent with the requirements of
+# this License.
+# 
+#   Each contributor grants you a non-exclusive, worldwide, royalty-free
+# patent license under the contributor's essential patent claims, to
+# make, use, sell, offer for sale, import and otherwise run, modify and
+# propagate the contents of its contributor version.
+# 
+#   In the following three paragraphs, a "patent license" is any express
+# agreement or commitment, however denominated, not to enforce a patent
+# (such as an express permission to practice a patent or covenant not to
+# sue for patent infringement).  To "grant" such a patent license to a
+# party means to make such an agreement or commitment not to enforce a
+# patent against the party.
+# 
+#   If you convey a covered work, knowingly relying on a patent license,
+# and the Corresponding Source of the work is not available for anyone
+# to copy, free of charge and under the terms of this License, through a
+# publicly available network server or other readily accessible means,
+# then you must either (1) cause the Corresponding Source to be so
+# available, or (2) arrange to deprive yourself of the benefit of the
+# patent license for this particular work, or (3) arrange, in a manner
+# consistent with the requirements of this License, to extend the patent
+# license to downstream recipients.  "Knowingly relying" means you have
+# actual knowledge that, but for the patent license, your conveying the
+# covered work in a country, or your recipient's use of the covered work
+# in a country, would infringe one or more identifiable patents in that
+# country that you have reason to believe are valid.
+# 
+#   If, pursuant to or in connection with a single transaction or
+# arrangement, you convey, or propagate by procuring conveyance of, a
+# covered work, and grant a patent license to some of the parties
+# receiving the covered work authorizing them to use, propagate, modify
+# or convey a specific copy of the covered work, then the patent license
+# you grant is automatically extended to all recipients of the covered
+# work and works based on it.
+# 
+#   A patent license is "discriminatory" if it does not include within
+# the scope of its coverage, prohibits the exercise of, or is
+# conditioned on the non-exercise of one or more of the rights that are
+# specifically granted under this License.  You may not convey a covered
+# work if you are a party to an arrangement with a third party that is
+# in the business of distributing software, under which you make payment
+# to the third party based on the extent of your activity of conveying
+# the work, and under which the third party grants, to any of the
+# parties who would receive the covered work from you, a discriminatory
+# patent license (a) in connection with copies of the covered work
+# conveyed by you (or copies made from those copies), or (b) primarily
+# for and in connection with specific products or compilations that
+# contain the covered work, unless you entered into that arrangement,
+# or that patent license was granted, prior to 28 March 2007.
+# 
+#   Nothing in this License shall be construed as excluding or limiting
+# any implied license or other defenses to infringement that may
+# otherwise be available to you under applicable patent law.
+# 
+#   12. No Surrender of Others' Freedom.
+# 
+#   If conditions are imposed on you (whether by court order, agreement or
+# otherwise) that contradict the conditions of this License, they do not
+# excuse you from the conditions of this License.  If you cannot convey a
+# covered work so as to satisfy simultaneously your obligations under this
+# License and any other pertinent obligations, then as a consequence you may
+# not convey it at all.  For example, if you agree to terms that obligate you
+# to collect a royalty for further conveying from those to whom you convey
+# the Program, the only way you could satisfy both those terms and this
+# License would be to refrain entirely from conveying the Program.
+# 
+#   13. Use with the GNU Affero General Public License.
+# 
+#   Notwithstanding any other provision of this License, you have
+# permission to link or combine any covered work with a work licensed
+# under version 3 of the GNU Affero General Public License into a single
+# combined work, and to convey the resulting work.  The terms of this
+# License will continue to apply to the part which is the covered work,
+# but the special requirements of the GNU Affero General Public License,
+# section 13, concerning interaction through a network will apply to the
+# combination as such.
+# 
+#   14. Revised Versions of this License.
+# 
+#   The Free Software Foundation may publish revised and/or new versions of
+# the GNU General Public License from time to time.  Such new versions will
+# be similar in spirit to the present version, but may differ in detail to
+# address new problems or concerns.
+# 
+#   Each version is given a distinguishing version number.  If the
+# Program specifies that a certain numbered version of the GNU General
+# Public License "or any later version" applies to it, you have the
+# option of following the terms and conditions either of that numbered
+# version or of any later version published by the Free Software
+# Foundation.  If the Program does not specify a version number of the
+# GNU General Public License, you may choose any version ever published
+# by the Free Software Foundation.
+# 
+#   If the Program specifies that a proxy can decide which future
+# versions of the GNU General Public License can be used, that proxy's
+# public statement of acceptance of a version permanently authorizes you
+# to choose that version for the Program.
+# 
+#   Later license versions may give you additional or different
+# permissions.  However, no additional obligations are imposed on any
+# author or copyright holder as a result of your choosing to follow a
+# later version.
+# 
+#   15. Disclaimer of Warranty.
+# 
+#   THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY
+# APPLICABLE LAW.  EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT
+# HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY
+# OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO,
+# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM
+# IS WITH YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF
+# ALL NECESSARY SERVICING, REPAIR OR CORRECTION.
+# 
+#   16. Limitation of Liability.
+# 
+#   IN NO EVENT UNLESS REQUIRED BY APPLICABLE LAW OR AGREED TO IN WRITING
+# WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MODIFIES AND/OR CONVEYS
+# THE PROGRAM AS PERMITTED ABOVE, BE LIABLE TO YOU FOR DAMAGES, INCLUDING ANY
+# GENERAL, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE
+# USE OR INABILITY TO USE THE PROGRAM (INCLUDING BUT NOT LIMITED TO LOSS OF
+# DATA OR DATA BEING RENDERED INACCURATE OR LOSSES SUSTAINED BY YOU OR THIRD
+# PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE WITH ANY OTHER PROGRAMS),
+# EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGES.
+# 
+#   17. Interpretation of Sections 15 and 16.
+# 
+#   If the disclaimer of warranty and limitation of liability provided
+# above cannot be given local legal effect according to their terms,
+# reviewing courts shall apply local law that most closely approximates
+# an absolute waiver of all civil liability in connection with the
+# Program, unless a warranty or assumption of liability accompanies a
+# copy of the Program in return for a fee.
+# 
+#                      END OF TERMS AND CONDITIONS
+# 
+#             How to Apply These Terms to Your New Programs
+# 
+#   If you develop a new program, and you want it to be of the greatest
+# possible use to the public, the best way to achieve this is to make it
+# free software which everyone can redistribute and change under these terms.
+# 
+#   To do so, attach the following notices to the program.  It is safest
+# to attach them to the start of each source file to most effectively
+# state the exclusion of warranty; and each file should have at least
+# the "copyright" line and a pointer to where the full notice is found.
+# 
+#     <one line to give the program's name and a brief idea of what it does.>
+#     Copyright (C) <year>  <name of author>
+# 
+#     This program is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+# 
+#     This program is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+# 
+#     You should have received a copy of the GNU General Public License
+#     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+# Also add information on how to contact you by electronic and paper mail.
+# 
+#   If the program does terminal interaction, make it output a short
+# notice like this when it starts in an interactive mode:
+# 
+#     <program>  Copyright (C) <year>  <name of author>
+#     This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.
+#     This is free software, and you are welcome to redistribute it
+#     under certain conditions; type `show c' for details.
+# 
+# The hypothetical commands `show w' and `show c' should show the appropriate
+# parts of the General Public License.  Of course, your program's commands
+# might be different; for a GUI interface, you would use an "about box".
+# 
+#   You should also get your employer (if you work as a programmer) or school,
+# if any, to sign a "copyright disclaimer" for the program, if necessary.
+# For more information on this, and how to apply and follow the GNU GPL, see
+# <http://www.gnu.org/licenses/>.
+# 
+#   The GNU General Public License does not permit incorporating your program
+# into proprietary programs.  If your program is a subroutine library, you
+# may consider it more useful to permit linking proprietary applications with
+# the library.  If this is what you want to do, use the GNU Lesser General
+# Public License instead of this License.  But first, please read
+# <http://www.gnu.org/philosophy/why-not-lgpl.html>.
+#
+
+#
+# historical reference:
+#
+# gzyx.v0.4.003.2007.07.14.a.iso had a sha1sum of
+# db1e6278a09a7251c2e4402ad10974aa0932abf8
+#
+# -----BEGIN PGP SIGNED MESSAGE-----
+#Hash: SHA1
+#
+#4dfea698dd571b3738cb964a40fe719e5bf6a5a29053075e844e6bbe2ee599aa34e8a23f3f24\
+#440b04251f0946b9599ccd60c197b71a7f645d10ff17f7c36cc3  Guitar-ZyX-0.3x.iso
+#-----BEGIN PGP SIGNATURE-----
+#Version: GnuPG v1.4.9 (GNU/Linux)
+#
+#iEYEARECAAYFAkp0ugUACgkQVsZU8Xv0mzwmqQCgljsuVKf4DA9NybHLYlwheWDj
+#reAAnR4CyrAerz2AwjiUSKbx2jSYCkUH
+#=daTj
+#-----END PGP SIGNATURE-----
+#
+# end historical reference
+#
+
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 3 of the License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Library General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#

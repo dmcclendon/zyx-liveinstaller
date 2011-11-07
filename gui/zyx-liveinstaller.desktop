@@ -1,0 +1,17 @@
+
+[Desktop Entry]
+Name=Rebootless LiveOS Installation
+Name[en_US]=Rebootless LiveOS Installation
+GenericName=Install
+GenericName[en_US]=Install
+Comment=Rebootlessly install the LiveOS to a system storage volume
+Comment[en_US]=Rebootlessly install the LiveOS to a system storage volume
+Categories=System;Utility;X-Red_Hat-Base;X-Fedora;GNOME;GTK;
+Exec=/usr/bin/zyx-liveinstaller
+Terminal=false
+Type=Application
+Icon=/usr/share/zyx-liveinstaller/pixmaps/icon.png
+Encoding=UTF-8
+StartupNotify=true
+NoDisplay=false
+X-Desktop-File-Install-Version=0.15

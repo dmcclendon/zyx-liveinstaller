@@ -1,0 +1,30 @@
+=============================================================================
+                         --------------------------
+                         ZyX LiveInstaller:: README
+                         --------------------------
+=============================================================================
+
+==================================================
+ZyX-LiveInstaller: A 'rebootless' LiveOS installer
+==================================================
+
+The short story is- neat devicemapper tricks to live migrate the running
+LiveOS root filesystem from cdrom/usb+ram to the local system disk.  Thus
+after installation, you can continue using your now installed system without
+the traditional step of rebooting.
+
+For more information, make sure to read all the documentation contained
+under the ./info subdirectory.
+
+This program is still in early development.  To build, after having unpacked
+the tree on your local fedora-12 or similar system, type 'make rpm' in the
+toplevel directory.  The resulting rpm may be installed on a running LiveOS,
+or preferably built directly into the LiveOS during mastering.  Then, to
+invoke the installer, type './zyx-liveinstaller' at the commandline, or look
+under the SystemTools desktop menu category, for 'ZyX-LiveInstaller'.
+
+Then read information and warnings carefully as the installation wizard
+guides you.
+
+=============================================================================
+=============================================================================

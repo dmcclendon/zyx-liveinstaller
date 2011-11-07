@@ -1,0 +1,181 @@
+=============================================================================
+                ----------------------------------------------
+                ZyX LiveInstaller:: Frequently Asked Questions
+                ----------------------------------------------
+=============================================================================
+
+=============================================================================
+Q:
+    Why did you do this?
+
+A:
+    I am very happy to say that I haven't 'really' used microsoft windows 
+in a very long time.  And I'm willing to grant that they do have smart 
+people working for them, and there did seem to be vast improvements 
+between 98 and XP.  But, niceties asside, the reason I chose a life path
+and niche career where I wouldn't have to 'really' use MS 'winblowz', is
+because of the nightmare user experience their OS provided for many years.
+I'm talking about reboot and reboot and reboot.  Install a driver, reboot 
+(perhaps several times).  Crash (on a daily basis), reboot.  Install
+software, reboot.  It just really bothered me as a computer engineer, to
+the point where whenever I would use any system, and have to reboot, I
+would hear a voice in my head question why the reboot was happening, and
+if better design and programming could have prevented the need to do it.
+So as soon as brain grok'd devicemapper enough to realize that this could
+be done, well...  it had to be done :)
+
+Note, I must give credit to Bill Rugolsky Jr. in a discussion on
+fedora-livecd-list[1a] back in March'06, he first introduced me to the
+idea of using devicemapper to migrate data from a LiveCD to disk.  His idea
+however was to migrate the readonly squashfs filesystem to disk, so that it
+would be effectively 'cached'.  I then figured out the next logical step of
+migrating the ext3 part of the readonly squashfs *and* the readwrite
+overlay, to result in something effectively identical to a tradionally
+installed and running system (sans cold, or even kexec-warm reboot).
+
+[1a] 
+https://www.redhat.com/archives/fedora-livecd-list/2006-March/msg00276.html
+
+
+=============================================================================
+Q: 
+    Does this require respinning or massive modification to the LiveOS?
+
+A:
+    For the standard Fedora LiveOS releases, probably as far back as they
+go- No.  There was a version of this I posted to fedora-devel 2 years ago
+that required either respinning or some painful manual early boot commands.
+But very shortly after I released that, I figured out how to avoid that,
+and mentioned that on fedora-devel as well.  I'm not sure if they believed 
+me at the time, but not a single person expressed any interest in finding
+out.
+
+=============================================================================
+Q: 
+    Will including this in my LiveOS spin be dangerous and have bad side-
+effects?
+
+A:
+    The size of the .i386.rpm is <150kb.  The code should only run if and
+only if the user launches the installer from the SystemTools desktop menu.
+The priveledged execution configuration(pam/consolehelper) is a 100% copy 
+of that of the traditional fedora anaconda/liveinst installer.  But by all
+means, this is at the moment very alpha software, in need of good peer-
+review and critique.
+
+=============================================================================
+Q: 
+    Doesn't SuSE already have a rebootless installer?
+
+A:
+    In some sense yes.  But not in the sense that the user can be surfing
+the web with firefox, running from a LiveCD/DVD/USB, then if they decide,
+launch a process which will install the OS they are using to surf the web
+with to disk, and when done, be able to eject the install CD/USB, never
+having had to stop using their web browser (or any other application).
+Rather, what I believe SuSE achieves, is saving several seconds that was
+historically spent doing a 'cold' or 'warm' reboot involving BIOS
+reinitialization of hardware.  Otherwise, their users still witness every
+process running on the computer, come to a synchronous end, while the user
+watches every OS initialization program and script, run again.  To me, I
+call that a 'reboot experience'.  If they really want to call that 
+'rebootless installation', well, more power to them.
+
+=============================================================================
+Q: 
+    Were you the first person to write a rebootless OS installer?
+
+A:
+    Perhaps, if you restrict the question to the sense of a fully usable
+LiveOS installer.  I suspect some things done 10+ years ago might fall
+under the terms, but those did not present you with a completely usable
+workstation prior to installation that remained unaffected through and 
+after installation.  Also, I am definitely the second person to have
+described the process online, though perhaps the first to have implemented
+it.  Only after I was well into my implementation did I discover that 
+Goswin Brederlow had outlined more or less the same implementation years
+earlier- 
+
+http://www.mail-archive.com/debian-boot@lists.debian.org/msg28182.html
+
+However I have never been able to find anything publically available
+that resulted from that discussion.
+
+=============================================================================
+Q: 
+    What happens to my seperate LiveUSB /home data partition/file?
+
+A:
+    For the moment, nothing.  If your LiveUSB /home is mounted from
+a seperate file or partition on the LiveUSB (i.e. during LiveUSB creation
+you allocated space for a seperate /home area), then it will remain 
+seperately mounted after installation.  In part, I am really awaiting
+feedback from serious users of such configurations to let me know how they
+think it should be handled.  This is because I have more than one thought
+on how to better address the situation, but don't necessarily want to 
+implement all the alternatives along with a selection mechanism.  Let me
+know what you think should happen by default in this situation.
+
+=============================================================================
+Q: 
+    What is this issue with unionfs with future Fedora releases?
+
+A:
+    At the inception of official Fedora LiveCDs (i.e. Fedora-6 if I recall
+correctly), Fedora(/DavidZ), partially inspired by a report I wrote[2] on 
+the Linux From Scratch LiveCD architecture, decided to utilize devicemapper
+snapshots to facilitate a LiveCD that supported a fully read-write root
+filesystem.  The more popular alternative at the time, and since, found in
+Knoppix and Ubuntu, was to use unionfs instead of devicemapper snapshots to
+provide the RW-rootfs capability.  I was such a non-ubuntu user at the time,
+that when I wrote that report, I actually did not know that ubuntu had already
+used devicemapper snapshots briefly, before switching out to unionfs, and that
+in all likelyhood, that is where LFS picked up on the technique.  The primary
+benefit of unionfs as a LiveOS architecture over devicemapper snapshots, might
+be the slightly more intuitive way that one can work with the overlay, as an
+easily accessible set of files, as opposed to a low level collection of
+modified disk blocks.  This also leads to easier recovery from storage
+exhaustion scenarios, as deleted files can trivially reclaim space in the
+overlay.  Wheras to as easily recover space in the dmsnapshot case, requires
+code currently theorized, but not yet written.  Because of this,
+LiveCD/USB/OSs, both unionfs and dmsnapshot based, but particularly dmsnapshot
+based, are not terribly well suited to long term use.  One thing to remember
+with the zyx-liveinstaller, is that once the installation completes, none of
+these complications matter any more, as the system is now effectively
+identical to a traditionally installed system... without rebooting even one
+time.  Now then, digressing a bit from background, going back to the original
+question- The reason that the zyx-liveinstaller will cease to work on stock
+Fedora, if they move to a unionfs based architecture, is because the
+devicemapper snapshot nature of the LiveOS, is key in facilitating rebootless
+installation.  With unionfs, you can try to do something similar, but if a
+filehandle is open (as many always are) on the installation media, there is
+no current way (that I know of) to seperate that media from the OS, without
+suffering stale broken filehandles, on system critical files.
+
+So should Fedora switch to unionfs for the LiveOS rootfs, which it may do as
+early as F13, the zyx-liveinstaller, would THEN AND ONLY THEN, require a
+custom respin to work with Fedora.  Also, note that unionfs being available
+in Fedora, is not the same thing as switching to it for the LiveOS
+architecture.  Should unionfs be in the mainline kernel, and in Fedora, but
+not used for the LiveOS architecture, then the zyx-liveinstaller would
+continue working on completely stock Fedora LiveCD/DVD/USBs.
+
+[2] In mid 2006, using the alias Jane Dogalt, I published my first 
+implementation outline[2a] of Rebootless LiveOS Installation, in response to
+discussion of SuSe style kexec bios-skipping-but-still-a-warm-reboot based
+installation.  Shortly thereafter, Fedora(/DavidZ), implemented the first
+official Fedora LiveCD, built with the pilgrim/mayflower toolset/scripts
+which provided the foundation for the current livecd-creator/tools.  In that
+first release's README.fedora[2b] file, davidz even referenced that post 
+(search for 'rebootless' in the linked page), and specifically, the
+facilitation of rebootless liveos installation.  Though he characterized it
+as 'bluesky', whatever that means.
+
+
+2a: 
+http://www.redhat.com/archives/anaconda-devel-list/2006-August/msg00028.html
+2b: 
+http://cgit.freedesktop.org/~david/pilgrim/commit/?h=bd9ff3dbce8ef5996be5ec23f999c7914fa7a656&id=31fb7988f302ea9ae98f6f77d4a158a774801eff
+
+=============================================================================
+=============================================================================

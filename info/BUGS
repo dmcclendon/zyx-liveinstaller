@@ -1,0 +1,81 @@
+=============================================================================
+                       ------------------------------
+                       ZyX LiveInstaller:: Known Bugs
+                       ------------------------------
+=============================================================================
+
+=============================================================================
+bug5: problems with multiple coexisting installations on the same system
+====
+PRESUMED FIXED in v0.1.13
+
+It seems that the tune2fs that comes with f11 (and earlier) cannot change the UUID of
+a mounted ext4 filesystem.  I even ran across a recent commit from TTso that fixed
+the issue for the case of unmounted filesystems (don't know if it will also work with
+mounted filesystems).  What this means is that the rootfs you install, e.g. from f11, will
+always have the same UUID.  If you install more than once to different partitions on
+the same system, then try to yum update your kernel, grubby will fail to automagically
+update your bootloader configuration to boot the new kernel automatically.  The long
+term solution to this will come either in the form of zyx-liveinstaller modifying the
+mounted rootfs's UUID after installation (should such a capable tune2fs be available),
+or the livecd mastering program (livecd-creator/viros) could be easily modified such
+that upon first(i.e. not 2nd with liveusb persistence) LiveOS boot, it initializes
+the rootfs with a new random UUID which is probably a worthwhile idea in general.  Until 
+then, just beware of this issue.  Very few
+'real' users would try for multiple concurrent installations, and testers should have
+read this file.
+
+=============================================================================
+bug4: pre-first-reboot hibernation
+====
+problem: 
+
+upon next boot after hibernation, you are dropped to a grub shell.
+
+analysis:
+
+I'm going to go out on a limb and say that I think this is now properly
+narrowed to the case of /boot on a seperate partition.  This is due to
+an upstream grub1 bug that is hopefully not present in grub2.  To
+work around, you would do something like the following at the grub
+prompt to reboot.  You may have to do the same thing again from the
+grub shell after booting to fix permanently.  Note that if you just don't
+try to hibernate before the first reboot, or have /boot on the same
+partition as /, this situation should not arise.
+
+# ASSUMING /boot on /dev/sda1
+root (hd0,0)
+setup (hd0)
+reboot
+
+=============================================================================
+bug3: problems with grubby not correctly updating grub.conf on kernel update pre-first-reboot
+====
+PRESUMED FIXED
+
+=============================================================================
+bug2: random frame of blackout (harmless)
+====
+that screen blank in the youtube video may actually be reproducable and related
+to zyx-liveinstaller, if not its fault.  It just happened when I did
+losetup -d /dev/loope3 (/squashfs/LiveOS/ext3fs.img)
+???
+maybe only happens on acer aspire one?
+
+=============================================================================
+bug1: GUI: valid iter assertion failure
+====
+(related to clumsy confused choice entry emptying, who knows, perhaps fixed on f11 pygtk)
+(triggerable by fastly repeatedly going back and forward between modes)
+
+------------
+ZyXLiveInstallerGUI.py:474: GtkWarning: gtk_tree_store_get_value: assertion `VALID_ITER (iter, tree_store)' failed
+gtk.main()
+ZyXLiveInstallerGUI.py:474: Warning: g_object_set_property: assertion `G_IS_VALUE (value)' failed
+gtk.main()
+ZyXLiveInstallerGUI.py:474: Warning: g_value_unset: assertion `G_IS_VALUE (value)' failed
+gtk.main()
+------------
+
+=============================================================================
+=============================================================================

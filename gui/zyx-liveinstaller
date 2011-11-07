@@ -1,0 +1,138 @@
+#!/usr/bin/python -tt
+#############################################################################
+#############################################################################
+##
+## ZyX-LiveInstaller
+##
+## A GUI Live OS Rebootless Installer (currently for fedora and derivatives)
+##
+## usage: ./zyx-liveinstaller
+##
+## Copyright 2009 Douglas McClendon <dmc AT filteredperception DOT org>
+##
+#############################################################################
+#############################################################################
+
+
+#############################################################################
+#############################################################################
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 3 of the License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Library General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+#############################################################################
+#############################################################################
+
+
+#############################################################################
+#############################################################################
+##
+## developer tree detection and setup
+##
+#############################################################################
+#############################################################################
+
+#
+# setup application specific python module/package search path
+#
+
+# for os.path
+import os
+# for sy.path
+import sys
+
+# get absolute directory of the running code file
+__abs_dir = os.path.dirname(os.path.abspath(__file__))
+
+# check if this was invoked from a development tree
+if __abs_dir.endswith("/gui"):
+    __developer_tree = True
+else:
+    __developer_tree = False
+
+if __developer_tree is True:
+    # add devtree/gui path to python search path
+    sys.path.insert(0, __abs_dir)
+else:
+    # if not, add the packaged installation path
+    # now lives in python site-packages rli dir
+#    sys.path.insert(0, "/usr/lib/zyx-liveinstaller")
+    True
+
+
+#############################################################################
+#############################################################################
+##
+## libraries
+##
+#############################################################################
+#############################################################################
+
+# for sys.exit
+import sys
+
+# for ZyXLiveInstallerGUI class
+if __developer_tree:
+    import ZyXLiveInstallerGUI as ZyXLiveInstallerGUI 
+else:
+    import rli.ZyXLiveInstallerGUI as ZyXLiveInstallerGUI 
+
+
+#############################################################################
+#############################################################################
+##
+## main 
+##
+#############################################################################
+#############################################################################
+        
+if __name__ == "__main__":
+
+    # instantiate a GUI installer
+    installer = ZyXLiveInstallerGUI.ZyXLiveInstallerGUI()
+
+    # respond to user actions
+    installer.handle_gui_events()
+
+    # code never reaches here 
+    sys.exit(0)
+
+
+#############################################################################
+#############################################################################
+##
+## end code -- just notes below
+##
+#############################################################################
+#############################################################################
+
+#############################################################################
+#############################################################################
+#
+# Musical Composition Detour - g4s2
+#
+#(long) premaz walk down forall g4  
+#start with 6-3(maz),shortpause,5-2,sp,41, for all g4
+#then do 6-3(simple),sp,5-2,sp,42 for all g4
+#then do 6-3(shortchord), i.e. 6+5,4,5,3 ...
+#(long): no short pause actual g4, with fade3's at end and power strum, which leads into next
+#(experimental optional)down,up,down,up but partials 
+#then go to obv chords, i.e. open,open,close,close,close,close, with short pauses
+#then go to o,o,c,sp,o,o,c,sp for each, but with special end
+#then go to open,open,close,airup,close,airup, , but with special end
+#xxxxxxxxxxx
+# s34-f2, start towards power. go 3, then 3 with s4open, then 3 with s4f4, then 1long with s3f4,
+# then 3 with s5open, then 3 with s5f2, then 3 with s5f3, then 1long with s5f2
+#
+#############################################################################
+#############################################################################

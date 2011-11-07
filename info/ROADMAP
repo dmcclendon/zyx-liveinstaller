@@ -1,0 +1,55 @@
+=============================================================================
+ZyX-LiveInstaller Development Roadmap/TODO
+=============================================================================
+
+NOTE: Active development has currently stalled.  New developers are 
+      encouraged to submit patches for anything below, or any itch 
+      of their own they would like to scratch.  For the timebeing, 
+      only showstopping functional bugs will be likely to be addressed.
+
+Short term
+----------
+
+- verify nothing left to undo that happened in initramfs 
+- undo anything that happened in init.d/*live* 
+  - time seddage, etc...
+  - enable services disabled (crond/atd/mdmonitor/etc...)
+    - perhaps ui for user to choose checkboxes
+- wholedisk choices need to preclude subsequent selection of child partitions
+- keep mounted (/proc/mounts) devices out of lists (i.e. your live device)
+ - and parent whole disks
+- check for running copy of self and exit or simple error if found
+
+Midterm
+-------
+
+- rebootful option
+- live rebootless and/or rebootful options
+- bugzilla, git, mailman, ...
+- untemphack python26 issue 
+  - it's there because I'm building on an f10-derived system, but for f11+ use
+- installation abort needs to try and recover sane LiveOS environment
+- catch/handle all exceptions
+- mount readonly pristine root to use as sources for 
+       late-install undoing of livestuff
+- need warning facility similar to error facility
+  - perhaps 2 varians, warning_with_back, and warning_with_confirm,
+    i.e. for cases where the user must undo, or just show extra cogniscence.
+  - first case: no gparted or palimpsest installed, =warning_with_back 
+- when scanning, try blockdev --getro, if true or no medium, leave off list
+
+Longterm
+--------
+
+- zyx-only: try removing -l's from umounts, see if they are still needed.
+- handle f11 situation a bit more nicely, i.e. 
+ - perhaps a checkbox - 'remove liveuser account after logout'
+ - perhaps a create user page
+       
+- pyparted (wait for viros f11 rebase, pyparted 2.x presumably, perhaps 
+            by then some better pyparted documentation or test/examples)
+   - ask about lgpl, test cases, review of zli for relatedness
+
+- optimize lvm rootfs case, removing linear layer (seems like it should be doable)
+- buttons should have fixed width (tied to widest, maybe just use space
+   padding)
